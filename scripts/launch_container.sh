@@ -11,10 +11,10 @@ help () {
     echo "options:"
     echo "h         Display help"
     echo "d         Absolute path to the dataset"
-    echo "b         Use this flag if you want to rebuild the image from scratch"
+    echo "b         Use this flag if you want to build the image from scratch"
 }
 
-rebuild_image() {
+build_image() {
     # If the Pytorch image is not existing on the machine, pull it
     if ! $DOCKER_COMMAND images | grep -q "$PYTORCH_IMAGE"; then
         $DOCKER_COMMAND pull "$IMAGE_NAME:$PYTORCH_TAG"
@@ -48,8 +48,8 @@ while getopts ":hd:b" option; do
         d) # dataset path
             DATASET_PATH=$OPTARG
             ;;
-        b) # Rebuild image
-            rebuild_image
+        b) # Build image
+            build_image
             ;;
         \?) # Invalid option
             echo "Error: Invalid option"
