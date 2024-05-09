@@ -67,5 +67,8 @@ $DOCKER_COMMAND run \
     --ipc=host \
     --ulimit memlock=-1 \
     --ulimit stack=67108864 \
+    -p 8080:8080 \
+    -p 8888:8888 \
+    -p 6006:6006 \
     -it \
     $IMAGE_NAME
