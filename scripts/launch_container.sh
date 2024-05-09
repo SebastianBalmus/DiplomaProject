@@ -3,6 +3,7 @@ DATASET_PATH="/media/DATA/SBALMUS/"
 PYTORCH_IMAGE="nvcr.io/nvidia/pytorch"
 PYTORCH_TAG="19.08-py3"
 IMAGE_NAME="sebastian_pytorch"
+CONTAINER_NAME="sebastian_diploma"
 
 help () {
     echo ""
@@ -23,6 +24,10 @@ build_image() {
     # If the image already exists, delete it
     if $DOCKER_COMMAND images | grep -q "$IMAGE_NAME"; then
         $DOCKER_COMMAND rmi "$IMAGE_NAME"
+    fi
+
+    if $DOCKER_COMMAND ps -a | grep -q "$CONTAINER_NAME"; then
+        $DOCKER_COMMAND rm "$CONTAINER_NAME"
     fi
 
     # Rebuild the image
@@ -61,7 +66,7 @@ done
 
 # Start the container
 $DOCKER_COMMAND run \
-    --name sebastian_diploma \
+    --name "$CONTAINER_NAME" \
     --mount src="$DATASET_PATH",target="/train_path",type=bind \
     --gpus all \
     --ipc=host \
