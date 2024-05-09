@@ -27,6 +27,7 @@ build_image() {
     fi
 
     if $DOCKER_COMMAND ps -a | grep -q "$CONTAINER_NAME"; then
+        $DOCKER_COMMAND stop "$CONTAINER_NAME"
         $DOCKER_COMMAND rm "$CONTAINER_NAME"
     fi
 
