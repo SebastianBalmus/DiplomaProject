@@ -1,6 +1,6 @@
 import torch
-from ConvNorm import ConvNorm
-from LinearNorm import LinearNorm
+from .ConvNorm import ConvNorm
+from .LinearNorm import LinearNorm
 
 
 class Location(torch.nn.Module):

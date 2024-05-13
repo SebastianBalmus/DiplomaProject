@@ -1,7 +1,7 @@
 import torch
 from torch.nn import functional as F
-from LinearNorm import LinearNorm
-from Location import Location
+from .LinearNorm import LinearNorm
+from .Location import Location
 
 
 class Attention(torch.nn.Module):

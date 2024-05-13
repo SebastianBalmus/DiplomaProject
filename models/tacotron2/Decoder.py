@@ -1,9 +1,9 @@
 import torch
 from torch.autograd import Variable
 from torch.nn import functional as F
-from LinearNorm import LinearNorm
-from Attention import Attention
-from Prenet import Prenet
+from .LinearNorm import LinearNorm
+from .Attention import Attention
+from .Prenet import Prenet
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from utils.util import get_mask_from_lengths
 

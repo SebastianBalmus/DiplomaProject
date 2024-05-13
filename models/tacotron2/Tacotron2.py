@@ -1,8 +1,8 @@
 import torch
 from math import sqrt
-from Encoder import Encoder
-from Decoder import Decoder
-from Postnet import Postnet
+from .Encoder import Encoder
+from .Decoder import Decoder
+from .Postnet import Postnet
 from utils.util import mode, get_mask_from_lengths
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 

@@ -1,6 +1,6 @@
 import torch
 from torch.nn import functional as F
-from ConvNorm import ConvNorm
+from .ConvNorm import ConvNorm
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 
 

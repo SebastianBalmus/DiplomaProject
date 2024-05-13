@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from LinearNorm import LinearNorm
+from .LinearNorm import LinearNorm
 
 
 class Prenet(torch.nn.Module):

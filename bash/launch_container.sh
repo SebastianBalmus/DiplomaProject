@@ -5,6 +5,10 @@ PYTORCH_TAG="19.08-py3"
 IMAGE_NAME="sebastian_pytorch"
 CONTAINER_NAME="sebastian_diploma"
 
+# Absolute path of the project
+PROJECT_PATH=$(realpath "$(dirname "$(dirname "$0")")")
+
+
 help () {
     echo ""
     echo
@@ -65,16 +69,37 @@ while getopts ":hd:b" option; do
 done
 
 
-# Start the container
-$DOCKER_COMMAND run \
-    --name "$CONTAINER_NAME" \
-    --mount src="$DATASET_PATH",target="/train_path",type=bind \
-    --gpus all \
-    --ipc=host \
-    --ulimit memlock=-1 \
-    --ulimit stack=67108864 \
-    -p 8080:8080 \
-    -p 8888:8888 \
-    -p 6006:6006 \
-    -it \
-    $IMAGE_NAME
+
+# Check the OS
+if [[ "$OSTYPE" == "msys" || "$MSYSTEM" == "MINGW32" || "$MSYSTEM" == "MINGW64" ]]; then
+    # Windows with MinGW (Git Bash)
+    # Start the container
+    $DOCKER_COMMAND run \
+        --name "$CONTAINER_NAME" \
+        --mount src="$PROJECT_PATH",target="/app",type=bind \
+        --gpus all \
+        --ipc=host \
+        --ulimit memlock=-1 \
+        --ulimit stack=67108864 \
+        -p 8080:8080 \
+        -p 8888:8888 \
+        -p 6006:6006 \
+        -it \
+        $IMAGE_NAME
+else
+    # Start the container
+    $DOCKER_COMMAND run \
+        --name "$CONTAINER_NAME" \
+        --mount src="$PROJECT_PATH",target="/app",type=bind \
+        --mount src="$DATASET_PATH",target="/train_path",type=bind \
+        --gpus all \
+        --ipc=host \
+        --ulimit memlock=-1 \
+        --ulimit stack=67108864 \
+        -p 8080:8080 \
+        -p 8888:8888 \
+        -p 6006:6006 \
+        -it \
+        $IMAGE_NAME
+fi
+
