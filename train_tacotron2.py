@@ -31,15 +31,14 @@ class Tacotron2Trainer:
             init_process_group(
                 backend=self.hparams.dist_backend,
                 init_method=self.hparams.dist_url,
-                world_size=self.hparams.world_size
-                * self.hparams.num_gpus,
+                world_size=self.hparams.world_size * self.hparams.num_gpus,
                 rank=self.rank,
             )
 
         # Generate a random seed for the current GPU
         torch.cuda.manual_seed(self.hparams.seed)
 
-        self.device = torch.device("cuda:{:d}".format(self.rank))
+        self.device = torch.device("cuda", self.rank)
 
         self.Tacotron2 = Tacotron2().to(self.device)
 
@@ -51,7 +50,7 @@ class Tacotron2Trainer:
         if self.hparams.num_gpus > 1:
             self.Tacotron2 = DistributedDataParallel(
                 self.Tacotron2, device_ids=[self.rank]
-            ).to(self.device)
+            )
 
         self.optimizer = torch.optim.Adam(
             self.Tacotron2.parameters(),
@@ -131,19 +130,19 @@ class Tacotron2Trainer:
 
         self.Tacotron2.train()
 
-        last_epoch = max(0, self.epoch)
-        for epoch in range(last_epoch, hps.max_iter):
+        for epoch in range(self.epoch, self.hparams.max_iter):
             if self.hparams.num_gpus > 1:
                 self.train_loader.sampler.set_epoch(epoch)
 
             for batch in self.train_loader:
                 start = time.perf_counter()
                 x, y = (
-                    self.Tacotron2.module if self.hparams.num_gpus > 1 else self.Tacotron2
-                ).parse_batch(batch)
+                    self.Tacotron2.module.parse_batch(batch)
+                    if self.hparams.num_gpus > 1
+                    else self.Tacotron2.parse_batch(batch)
+                )
                 y_pred = self.Tacotron2(x)
 
-                # loss
                 loss, items = self.loss(y_pred, y)
 
                 # zero grad
@@ -152,7 +151,7 @@ class Tacotron2Trainer:
                 # backward, grad_norm, and update
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(
-                    self.Tacotron2.parameters(), hps.grad_clip_thresh
+                    self.Tacotron2.parameters(), self.hparams.grad_clip_thresh
                 )
                 self.optimizer.step()
                 self.scheduler.step()
@@ -161,44 +160,41 @@ class Tacotron2Trainer:
 
                 if self.rank == 0:
                     logger.info(
-                        "Epoch: {} Mel Loss: {:.2e} Gate Loss: {:.2e} Grad Norm: {:.2e} {:.1f}s/it".format(
-                            epoch, items[0], items[1], grad_norm, duration
+                        f"Epoch: {epoch} Mel Loss: {items[0]:.2e} Gate Loss: {items[1]:.2e} Grad Norm: {grad_norm:.2e} {duration:.1f}s/it"
+                    )
+
+                    if self.input_args.logdir and (
+                        epoch % self.hparams.iters_per_log == 0
+                    ):
+                        learning_rate = self.optimizer.param_groups[0]["lr"]
+                        self.logger.log_training(items, grad_norm, learning_rate, epoch)
+
+                    if epoch % self.hparams.iters_per_sample == 0:
+                        self.Tacotron2.eval()
+                        output = infer(
+                            self.hparams.eg_text,
+                            (
+                                self.Tacotron2.module
+                                if self.hparams.num_gpus > 1
+                                else self.Tacotron2
+                            ),
                         )
-                    )
+                        self.Tacotron2.train()
+                        self.logger.sample_train(y_pred, epoch)
+                        self.logger.sample_infer(output, epoch)
 
-                # log
-                if self.input_args.logdir != "" and (
-                    epoch % self.hparams.iters_per_log == 0
-                ):
-                    learning_rate = self.optimizer.param_groups[0]["lr"]
-                    logger.log_training(items, grad_norm, learning_rate, epoch)
+                    if epoch % self.hparams.iters_per_ckpt == 0:
+                        ckpt_path = os.path.join(
+                            self.input_args.ckpt_dir, f"ckpt_{epoch}"
+                        )
+                        self._save_checkpoint(ckpt_path, self.hparams.num_gpus)
 
-                # validation
-                if self.input_args.logdir != "" and (
-                    epoch % self.hparams.iters_per_sample == 0
-                ):
-                    self.Tacotron2.eval()
-                    output = infer(
-                        hps.eg_text,
-                        self.Tacotron2.module if self.hparams.num_gpus > 1 else self.Tacotron2,
-                    )
-                    self.Tacotron2.train()
-                    self.logger.sample_train(y_pred, epoch)
-                    self.logger.sample_infer(output, epoch)
-
-                if self.input_args.ckpt_dir != "" and (epoch % hps.iters_per_ckpt == 0):
-                    ckpt_path = os.path.join(
-                        self.input_args.ckpt_dir, "ckpt_{}".format(epoch)
-                    )
-                    self._save_checkpoint(ckpt_path, self.hparams.num_gpus)
-
-        if self.rank == 0 and self.input_args.logdir != "":
+        if self.rank == 0 and self.input_args.logdir:
             self.logger.close()
 
 
 def multiprocessing_wrapper(rank, input_args, hparams):
     trainer = Tacotron2Trainer(rank=rank, input_args=input_args, hparams=hparams)
-
     trainer.train()
 
 
@@ -236,19 +232,11 @@ if __name__ == "__main__":
         np.random.seed(hparams.seed)
         torch.manual_seed(hparams.seed)
         hparams.num_gpus = torch.cuda.device_count()
-        hparams.batch_size = int(hparams.batch_size / hparams.num_gpus)
+        hparams.batch_size = hparams.batch_size // hparams.num_gpus
         logger.info(f"Batch size per GPU: {hparams.batch_size}")
 
     if hparams.num_gpus > 1:
-        mp.spawn(
-            multiprocessing_wrapper,
-            nprocs=hparams.num_gpus,
-            args=(
-                args,
-                hparams,
-            ),
-        )
-
+        mp.spawn(multiprocessing_wrapper, nprocs=hparams.num_gpus, args=(args, hparams))
     else:
         trainer = Tacotron2Trainer(rank=0, input_args=args, hparams=hparams)
-    trainer.train()
+        trainer.train()

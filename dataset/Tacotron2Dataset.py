@@ -23,7 +23,7 @@ class Tacotron2Dataset(Dataset):
         for id_text_pair in tqdm(
             self.metadata,
             desc='Loading dataset',
-            mininters=int(len(self.metadata) / 200),
+            miniters=int(len(self.metadata) / 200),
             leave=True,
             position=0
         ):
