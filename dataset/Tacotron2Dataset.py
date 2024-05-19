@@ -1,9 +1,9 @@
 import os
 import csv
-import tqdm
 import torch
 import logging
 import numpy as np
+from tqdm import tqdm
 from text import text_to_sequence
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from torch.utils.data import Dataset, DistributedSampler, DataLoader
