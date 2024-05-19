@@ -63,7 +63,7 @@ class Tacotron2Trainer:
 
         self.loss = Tacotron2Loss()
 
-        if self.input_args.ckpt_path is not None:
+        if self.input_args.ckpt_path != "":
             self.is_checkpoint = True
             self._load_checkpoint(self.input_args.ckpt_path, self.device)
         else:
