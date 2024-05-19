@@ -47,12 +47,12 @@ class Encoder(torch.nn.Module):
 
         # pytorch tensor are not reversible, hence the conversion
         input_lengths = input_lengths.cpu().numpy()
-        x = torch.nn.utils.rtorch.nn.pack_padded_sequence(x, input_lengths, batch_first=True)
+        x = torch.nn.utils.rnn.pack_padded_sequence(x, input_lengths, batch_first=True)
 
         self.lstm.flatten_parameters()
         outputs, _ = self.lstm(x)
 
-        outputs, _ = torch.nn.utils.rtorch.nn.pad_packed_sequence(outputs, batch_first=True)
+        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
         return outputs
 
     def inference(self, x):

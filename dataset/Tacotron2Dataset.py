@@ -1,11 +1,16 @@
 import os
 import csv
+import tqdm
 import torch
+import logging
 import numpy as np
 from text import text_to_sequence
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from torch.utils.data import Dataset, DistributedSampler, DataLoader
 from utils.audio import load_wav, melspectrogram
+
+
+logger = logging.getLogger(__name__)
 
 
 class Tacotron2Dataset(Dataset):
@@ -15,7 +20,8 @@ class Tacotron2Dataset(Dataset):
 
         self.data = []
 
-        for id_text_pair in self.metadata:
+        logger.info('Retrieving dataset...')
+        for id_text_pair in tqdm(self.metadata):
             assert len(id_text_pair) >= 2
             id = id_text_pair[0]
             text = id_text_pair[1]
