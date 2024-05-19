@@ -16,8 +16,9 @@ class Tacotron2Dataset(Dataset):
         self.data = []
 
         for id_text_pair in self.metadata:
-            assert len(id_text_pair) == 2
-            [id, text] = id_text_pair
+            assert len(id_text_pair) >= 2
+            id = id_text_pair[0]
+            text = id_text_pair[1]
             wav_path = os.path.join(wavs_dir, f"{id}.wav")
 
             text_mel_pair = self._get_text_mel_pair(text, wav_path)

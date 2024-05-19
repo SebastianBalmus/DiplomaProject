@@ -15,7 +15,7 @@ def split_ljspeech(metadata_path, save_dir, validation_size=0.1, seed=88):
 
     # Shuffle the data to ensure random splitting
     random.seed(88)
-    random.shuffle(data)
+    random.shuffle(seed)
 
     # Calculate the split index
     split_index = int(len(data) * (1 - validation_size))
