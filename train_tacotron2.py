@@ -133,13 +133,13 @@ class Tacotron2Trainer:
 
         last_epoch = max(0, self.epoch)
         for epoch in range(last_epoch, hps.max_iter):
-            if self.num_gpus > 1:
+            if self.hparams.num_gpus > 1:
                 self.train_loader.sampler.set_epoch(epoch)
 
             for batch in self.train_loader:
                 start = time.perf_counter()
                 x, y = (
-                    self.Tacotron2.module if self.num_gpus > 1 else self.Tacotron2
+                    self.Tacotron2.module if self.hparams.num_gpus > 1 else self.Tacotron2
                 ).parse_batch(batch)
                 y_pred = self.Tacotron2(x)
 
@@ -180,7 +180,7 @@ class Tacotron2Trainer:
                     self.Tacotron2.eval()
                     output = infer(
                         hps.eg_text,
-                        self.Tacotron2.module if self.num_gpus > 1 else self.Tacotron2,
+                        self.Tacotron2.module if self.hparams.num_gpus > 1 else self.Tacotron2,
                     )
                     self.Tacotron2.train()
                     self.logger.sample_train(y_pred, epoch)
@@ -190,7 +190,7 @@ class Tacotron2Trainer:
                     ckpt_path = os.path.join(
                         self.input_args.ckpt_dir, "ckpt_{}".format(epoch)
                     )
-                    self._save_checkpoint(ckpt_path, self.num_gpus)
+                    self._save_checkpoint(ckpt_path, self.hparams.num_gpus)
 
         if self.rank == 0 and self.input_args.logdir != "":
             self.logger.close()
