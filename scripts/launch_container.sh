@@ -28,7 +28,7 @@ build_image() {
 
     # If the image already exists, delete it
     if $DOCKER_COMMAND images | grep -q "$IMAGE_NAME"; then
-        IMAGE_ID=$(docker images --format "{{.ID}}" "$IMAGE_NAME")
+        IMAGE_ID=$($DOCKER_COMMAND images --format "{{.ID}}" "$IMAGE_NAME")
         $DOCKER_COMMAND rmi "$IMAGE_ID"
     fi
 
