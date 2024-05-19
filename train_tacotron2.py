@@ -131,7 +131,8 @@ class Tacotron2Trainer:
 
         self.Tacotron2.train()
 
-        for epoch in range(max(0, self.epoch), hps.max_iter):
+        last_epoch = max(0, self.epoch)
+        for epoch in range(last_epoch, hps.max_iter):
             if self.num_gpus > 1:
                 self.train_loader.sampler.set_epoch(epoch)
 

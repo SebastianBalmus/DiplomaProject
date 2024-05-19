@@ -44,7 +44,7 @@ class Tacotron2HParams:
     betas = (0.9, 0.999)
     eps = 1e-6
     sch_step = 4000
-    max_iter = 200e3
+    max_iter = 200000
     batch_size = 16
     iters_per_log = 10
     iters_per_sample = 500
