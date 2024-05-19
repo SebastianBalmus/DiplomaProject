@@ -2,7 +2,7 @@ from text import symbols
 
 
 class Tacotron2HParams:
-    seed = 0
+    num_gpus = 0
 
     ################################
     # Data Parameters              #
@@ -33,7 +33,6 @@ class Tacotron2HParams:
     lr = 2e-3
     betas = (0.9, 0.999)
     eps = 1e-6
-    sch = True
     sch_step = 4000
     max_iter = 200e3
     batch_size = 16

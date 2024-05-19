@@ -1,4 +1,5 @@
 #!/bin/bash
+
 DATASET_PATH="/media/DATA/SBALMUS/"
 PYTORCH_IMAGE="nvcr.io/nvidia/pytorch"
 PYTORCH_TAG="19.08-py3"
