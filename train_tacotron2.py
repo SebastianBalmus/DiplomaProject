@@ -100,7 +100,7 @@ class Tacotron2Trainer:
             (step + 1) * self.hparams.sch_step**-1.5, (step + 1) ** -0.5
         )
 
-        if ckpt_path is not None:
+        if ckpt_path != "":
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(
                 self.optimizer, lr_lambda, last_epoch=self.epoch
             )
