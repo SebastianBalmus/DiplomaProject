@@ -12,7 +12,7 @@ from dataset.Tacotron2Dataset import Tacotron2Dataset
 from utils.logger import Tacotron2Logger
 from models.tacotron2.Tacotron2 import Tacotron2
 from models.tacotron2.Loss import Tacotron2Loss
-from torch.distributed import init_process_group
+from torch.distributed import init_process_group, destroy_process_group
 from torch.nn.parallel import DistributedDataParallel
 
 torch.backends.cudnn.enabled = True
@@ -141,15 +141,20 @@ class Tacotron2Trainer:
                     if self.hparams.num_gpus > 1
                     else self.Tacotron2.parse_batch(batch)
                 )
+
+                x = x.to(self.device)
+                y = y.to(self.device)        
+
                 y_pred = self.Tacotron2(x)
 
                 loss, items = self.loss(y_pred, y)
 
                 # zero grad
-                self.Tacotron2.zero_grad()
+                self.optimizer.zero_grad()
 
                 # backward, grad_norm, and update
                 loss.backward()
+
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.Tacotron2.parameters(), self.hparams.grad_clip_thresh
                 )
@@ -191,6 +196,9 @@ class Tacotron2Trainer:
 
         if self.rank == 0 and self.input_args.logdir:
             self.logger.close()
+        
+        if self.hparams.num_gpus > 1:
+            destroy_process_group()
 
 
 def multiprocessing_wrapper(rank, input_args, hparams):
