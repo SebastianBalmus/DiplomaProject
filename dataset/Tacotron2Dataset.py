@@ -20,8 +20,13 @@ class Tacotron2Dataset(Dataset):
 
         self.data = []
 
-        logger.info('Retrieving dataset...')
-        for id_text_pair in tqdm(self.metadata):
+        logger.info()
+        for id_text_pair in tqdm(
+            self.metadata,
+            total=1000,
+            leave=True,
+            position=0
+        ):
             assert len(id_text_pair) >= 2
             id = id_text_pair[0]
             text = id_text_pair[1]
