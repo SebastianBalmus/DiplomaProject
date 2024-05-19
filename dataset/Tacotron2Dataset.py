@@ -20,10 +20,8 @@ class Tacotron2Dataset(Dataset):
 
         self.data = []
 
-        logger.info()
         for id_text_pair in tqdm(
             self.metadata,
-            total=1000,
             leave=True,
             position=0
         ):
