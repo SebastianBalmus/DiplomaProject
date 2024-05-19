@@ -3,7 +3,16 @@ from text import symbols
 
 class Tacotron2HParams:
     seed = 88
+
+
+    ################################
+    # Distributed  Training        #
+    ################################
     num_gpus = 0
+    dist_backend = 'nccl'
+    dist_url = 'tcp://localhost:54321'
+    world_size = 1
+    text_cleaners=['english_cleaners']
 
     ################################
     # Data Parameters              #

@@ -29,9 +29,9 @@ class Tacotron2Trainer:
 
         if self.hparams.num_gpus > 1:
             init_process_group(
-                backend=self.hparams.dist_config["dist_backend"],
-                init_method=self.hparams.dist_config["dist_url"],
-                world_size=self.hparams.dist_config["world_size"]
+                backend=self.hparams.dist_backend,
+                init_method=self.hparams.dist_url,
+                world_size=self.hparams.world_size
                 * self.hparams.num_gpus,
                 rank=self.rank,
             )
