@@ -2,6 +2,7 @@ from text import symbols
 
 
 class Tacotron2HParams:
+    seed = 88
     num_gpus = 0
 
     ################################
