@@ -65,25 +65,25 @@ class Tacotron2Trainer:
 
         if self.input_args.ckpt_path is not None:
             self.is_checkpoint = True
-            self._load_checkpoint(self.input_args.ckpt_pth, self.device)
+            self._load_checkpoint(self.input_args.ckpt_path, self.device)
         else:
             self.is_checkpoint = False
             self.epoch = 1
 
-        self._create_scheduler(self.input_args.ckpt_pth)
+        self._create_scheduler(self.input_args.ckpt_path)
 
-    def _load_checkpoint(self, ckpt_pth, device):
-        assert os.path.isfile(ckpt_pth)
+    def _load_checkpoint(self, ckpt_path, device):
+        assert os.path.isfile(ckpt_path)
 
-        logger.info(f"Loading checkpoint {ckpt_pth}")
+        logger.info(f"Loading checkpoint {ckpt_path}")
 
-        ckpt_dict = torch.load(ckpt_pth, map_location=device)
+        ckpt_dict = torch.load(ckpt_path, map_location=device)
 
         self.Tacotron2.load_state_dict(ckpt_dict["Tacotron2"])
         self.optimizer.load_state_dict(ckpt_dict["optimizer"])
         self.epoch = ckpt_dict["epoch"] + 1
 
-    def _save_checkpoint(self, ckpt_pth, num_gpus):
+    def _save_checkpoint(self, ckpt_path, num_gpus):
         torch.save(
             dict(
                 Tacotron2=(
@@ -92,15 +92,15 @@ class Tacotron2Trainer:
                 optimizer=self.optimizer.state_dict(),
                 epoch=self.epoch,
             ),
-            ckpt_pth,
+            ckpt_path,
         )
 
-    def _create_scheduler(self, ckpt_pth):
+    def _create_scheduler(self, ckpt_path):
         lr_lambda = lambda step: self.hparams.sch_step**0.5 * min(
             (step + 1) * self.hparams.sch_step**-1.5, (step + 1) ** -0.5
         )
 
-        if ckpt_pth is not None:
+        if ckpt_path is not None:
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(
                 self.optimizer, lr_lambda, last_epoch=self.epoch
             )
@@ -186,10 +186,10 @@ class Tacotron2Trainer:
                     self.logger.sample_infer(output, epoch)
 
                 if self.input_args.ckpt_dir != "" and (epoch % hps.iters_per_ckpt == 0):
-                    ckpt_pth = os.path.join(
+                    ckpt_path = os.path.join(
                         self.input_args.ckpt_dir, "ckpt_{}".format(epoch)
                     )
-                    self._save_checkpoint(ckpt_pth, self.num_gpus)
+                    self._save_checkpoint(ckpt_path, self.num_gpus)
 
         if self.rank == 0 and self.input_args.logdir != "":
             self.logger.close()
