@@ -209,6 +209,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-cp", "--ckpt_pth", type=str, default="", help="path to load checkpoints"
     )
+    parser.add_argument('--local_rank', type = int, default = 0)
 
     args = parser.parse_args()
 

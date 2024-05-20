@@ -8,7 +8,7 @@ class Tacotron2HParams:
     ################################
     # Distributed  Training        #
     ################################
-    num_gpus = 0
+    num_gpus = 1
     dist_backend = 'nccl'
     dist_url = 'tcp://localhost:54321'
     world_size = 1

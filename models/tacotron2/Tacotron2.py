@@ -18,14 +18,14 @@ class Tacotron2(torch.nn.Module):
         self.decoder = Decoder()
         self.postnet = Postnet()
 
-    def parse_batch(self, batch, device):
+    def parse_batch(self, batch):
         text_padded, input_lengths, mel_padded, gate_padded, output_lengths = batch
-        text_padded = text_padded.long().to(device)
-        input_lengths = input_lengths.long().to(device)
+        text_padded = mode(text_padded).long()
+        input_lengths = mode(input_lengths).long()
         max_len = torch.max(input_lengths.data).item()
-        mel_padded = mel_padded.float().to(device)
-        gate_padded = gate_padded.float().to(device)
-        output_lengths = output_lengths.long().to(device)
+        mel_padded = mode(mel_padded).float()
+        gate_padded = mode(gate_padded).float()
+        output_lengths = mode(output_lengths).long()
         return (
             (text_padded, input_lengths, mel_padded, max_len, output_lengths),
             (mel_padded, gate_padded, output_lengths),
