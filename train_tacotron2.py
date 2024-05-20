@@ -34,7 +34,7 @@ class Tacotron2Trainer:
             self.local_rank = int(os.environ["LOCAL_RANK"])
             self.hparams.num_gpus = int(os.environ["WORLD_SIZE"])
             torch.distributed.init_process_group(
-                backend="nccl", rank=local_rank, world_size=self.hparams.num_gpus
+                backend="nccl", rank=self.local_rank, world_size=self.hparams.num_gpus
             )
 
         self.device = torch.device("cuda", self.rank)
@@ -49,7 +49,7 @@ class Tacotron2Trainer:
 
         if self.hparams.num_gpus > 1:
             self.Tacotron2 = DistributedDataParallel(
-                self.Tacotron2, device_ids=[local_rank]
+                self.Tacotron2, device_ids=[self.local_rank]
             )
 
         self.optimizer = torch.optim.Adam(
@@ -135,9 +135,9 @@ class Tacotron2Trainer:
             for batch in self.train_loader:
                 start = time.perf_counter()
                 x, y = (
-                    self.Tacotron2.module.parse_batch(batch, self.device)
+                    self.Tacotron2.module.parse_batch(batch)
                     if self.hparams.num_gpus > 1
-                    else self.Tacotron2.parse_batch(batch, self.device)
+                    else self.Tacotron2.parse_batch(batch)
                 )
 
                 y_pred = self.Tacotron2(x)
