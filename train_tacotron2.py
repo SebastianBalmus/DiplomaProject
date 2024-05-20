@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class Tacotron2Trainer:
     def __init__(self, input_args, hparams):
+        self.rank = self.local_rank = 0
         self.input_args = input_args
         self.hparams = hparams
 
@@ -37,10 +38,9 @@ class Tacotron2Trainer:
                 backend="nccl", rank=self.local_rank, world_size=self.hparams.num_gpus
             )
 
-        self.device = torch.device("cuda", self.rank)
+        self.device = torch.device("cuda:{:d}".format(self.local_rank))
 
-        self.Tacotron2 = Tacotron2()
-        mode(self.Tacotron2, True)
+        self.Tacotron2 = Tacotron2().to(self.device)
 
         if self.rank == 0:
             logger.info(self.Tacotron2)
@@ -60,7 +60,7 @@ class Tacotron2Trainer:
             weight_decay=self.hparams.weight_decay,
         )
 
-        self.criterion = Tacotron2Loss()
+        self.criterion = Tacotron2Loss().to(self.device)
 
         if self.input_args.ckpt_path != "":
             self._load_checkpoint(self.input_args.ckpt_path, self.device)
@@ -134,11 +134,12 @@ class Tacotron2Trainer:
 
             for batch in self.train_loader:
                 start = time.perf_counter()
+                batch = [item.to(self.device) for item in batch]  # Move batch to the correct device
                 x, y = (
-                    self.Tacotron2.module.parse_batch(batch)
+                    self.Tacotron2.module
                     if self.hparams.num_gpus > 1
-                    else self.Tacotron2.parse_batch(batch)
-                )
+                    else self.Tacotron2
+                ).parse_batch(batch)
 
                 y_pred = self.Tacotron2(x)
 
