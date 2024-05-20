@@ -1,6 +1,6 @@
 import torch
 from utils.util import get_mask_from_lengths
-
+from hparams.Tacotron2HParams import Tacotron2HParams as hps
 
 
 class Tacotron2Loss(torch.nn.Module):
