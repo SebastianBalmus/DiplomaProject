@@ -108,6 +108,9 @@ class Tacotron2Trainer:
                 self.optimizer, lr_lambda
             )
 
+    def map_array_to_gpu(self, array):
+        return map(lambda item: item.to(self.device) if torch.is_tensor(item) else item, array)
+
     def train(self):
         self.train_loader = Tacotron2Dataset.dataloader_factory(
             metadata_path=self.input_args.metadata_path,
@@ -142,8 +145,8 @@ class Tacotron2Trainer:
                     else self.Tacotron2.parse_batch(batch)
                 )
 
-                x = x.to(self.device)
-                y = y.to(self.device)        
+                x = self.map_array_to_gpu(x)
+                y = self.map_array_to_gpu(y)
 
                 y_pred = self.Tacotron2(x)
 
