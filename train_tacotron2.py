@@ -5,7 +5,6 @@ import argparse
 import numpy as np
 import logging
 import torch.multiprocessing as mp
-from utils.util import mode
 from inference_handlers.Tacotron2InferenceHandler import infer
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from dataset.Tacotron2Dataset import Tacotron2Dataset
@@ -140,9 +139,9 @@ class Tacotron2Trainer:
             for batch in self.train_loader:
                 start = time.perf_counter()
                 x, y = (
-                    self.Tacotron2.module.parse_batch(batch)
+                    self.Tacotron2.module.parse_batch(batch, self.device)
                     if self.hparams.num_gpus > 1
-                    else self.Tacotron2.parse_batch(batch)
+                    else self.Tacotron2.parse_batch(batch, self.device)
                 )
 
                 x = self.map_array_to_gpu(x)
