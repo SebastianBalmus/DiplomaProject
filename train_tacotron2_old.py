@@ -12,6 +12,7 @@ from models.tacotron2.Tacotron2 import Tacotron2
 from models.tacotron2.Loss import Tacotron2Loss
 from torch.utils.data import DistributedSampler, DataLoader
 from torch.nn.parallel import DistributedDataParallel
+from dataset.Tacotron2Dataset import Tacotron2Dataset
 
 
 np.random.seed(hps.seed)
@@ -20,22 +21,6 @@ torch.cuda.manual_seed(hps.seed)
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = False
 
-
-def prepare_dataloaders(fdir, n_gpu):
-    trainset = ljdataset(fdir)
-    collate_fn = ljcollate(hps.n_frames_per_step)
-    sampler = DistributedSampler(trainset) if n_gpu > 1 else None
-    train_loader = DataLoader(
-        trainset,
-        num_workers=hps.n_workers,
-        shuffle=n_gpu == 1,
-        batch_size=hps.batch_size,
-        pin_memory=hps.pin_mem,
-        drop_last=True,
-        collate_fn=collate_fn,
-        sampler=sampler,
-    )
-    return train_loader
 
 
 def load_checkpoint(ckpt_pth, model, optimizer, device, n_gpu):
@@ -109,7 +94,11 @@ def train(args):
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
     # make dataset
-    train_loader = prepare_dataloaders(args.data_dir, n_gpu)
+    train_loader = Tacotron2Dataset.dataloader_factory(
+            metadata_path=args.metadata_path,
+            wavs_dir=args.wavs_dir,
+            num_gpus=args.num_gpus,
+        )
 
     if rank == 0:
         # get logger ready
@@ -190,7 +179,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # path
     parser.add_argument(
-        "-d", "--data_dir", type=str, default="data", help="directory to load data"
+        "-w", "--wavs_dir", type=str, help="Directory where the .wav files are saved"
+    )
+    parser.add_argument(
+        "-m", "--metadata_path", type=str, help="Directory where the metadata is saved"
     )
     parser.add_argument(
         "-l",
