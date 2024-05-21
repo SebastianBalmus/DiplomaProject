@@ -3,16 +3,16 @@ import time
 import torch
 import argparse
 import numpy as np
+import logging
+import torch.multiprocessing as mp
 from utils.util import mode
 from inference_handlers.Tacotron2InferenceHandler import infer
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
-from utils.logger import Tacotron2Logger
 from dataset.Tacotron2Dataset import Tacotron2Dataset
+from utils.logger import Tacotron2Logger
 from models.tacotron2.Tacotron2 import Tacotron2
 from models.tacotron2.Loss import Tacotron2Loss
-from torch.utils.data import DistributedSampler, DataLoader
 from torch.nn.parallel import DistributedDataParallel
-
 
 np.random.seed(hps.seed)
 torch.manual_seed(hps.seed)
@@ -20,161 +20,135 @@ torch.cuda.manual_seed(hps.seed)
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = False
 
-
-def load_checkpoint(ckpt_pth, model, optimizer, device, n_gpu):
-    ckpt_dict = torch.load(ckpt_pth, map_location=device)
-    (model.module if n_gpu > 1 else model).load_state_dict(ckpt_dict["model"])
-    optimizer.load_state_dict(ckpt_dict["optimizer"])
-    iteration = ckpt_dict["iteration"]
-    return model, optimizer, iteration
+logger = logging.getLogger(__file__)
 
 
-def save_checkpoint(model, optimizer, iteration, ckpt_pth, n_gpu):
-    torch.save(
-        {
-            "model": (model.module if n_gpu > 1 else model).state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "iteration": iteration,
-        },
-        ckpt_pth,
-    )
+class Tacotron2Trainer:
+    def __init__(self, input_args):
+        self.wavs_dir = input_args.wavs_dir
+        self.metadata_path = input_args.metadata_path
+        self.ckpt_dir = input_args.ckpt_dir
+        self.ckpt_path = input_args.ckpt_path
+        self.logdir = input_args.logdir
+        self.rank = self.local_rank = 0
 
+        if "WORLD_SIZE" in os.environ:
+            os.environ["OMP_NUM_THREADS"] = str(hps.n_workers)
+            self.rank = int(os.environ["RANK"])
+            self.local_rank = int(os.environ["LOCAL_RANK"])
+            self.num_gpus = int(os.environ["WORLD_SIZE"])
+            torch.distributed.init_process_group(
+                backend="nccl", rank=self.local_rank, world_size=self.num_gpus
+            )
+        
+        self.device = torch.device("cuda:{:d}".format(self.local_rank))
 
-def train(args):
-    # setup env
-    rank = local_rank = 0
-    n_gpu = 1
-    if "WORLD_SIZE" in os.environ:
-        os.environ["OMP_NUM_THREADS"] = str(hps.n_workers)
-        rank = int(os.environ["RANK"])
-        local_rank = int(os.environ["LOCAL_RANK"])
-        n_gpu = int(os.environ["WORLD_SIZE"])
-        torch.distributed.init_process_group(
-            backend="nccl", rank=local_rank, world_size=n_gpu
+        self.Tacotron2 = Tacotron2()
+        mode(self.Tacotron2, True)
+
+        if self.num_gpus > 1:
+            self.Tacotron2 = DistributedDataParallel(
+                self.Tacotron2, device_ids=[self.local_rank]
+            )
+        
+        self.optimizer = torch.optim.Adam(
+            self.Tacotron2.parameters(),
+            lr=hps.lr,
+            betas=hps.betas,
+            eps=hps.eps,
+            weight_decay=hps.weight_decay,
         )
-    torch.cuda.set_device(local_rank)
-    device = torch.device("cuda:{:d}".format(local_rank))
 
-    # build model
-    model = Tacotron2()
-    mode(model, True)
-    if n_gpu > 1:
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[local_rank]
-        )
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=hps.lr,
-        betas=hps.betas,
-        eps=hps.eps,
-        weight_decay=hps.weight_decay,
-    )
-    criterion = Tacotron2Loss()
+        self.criterion = Tacotron2Loss()
 
-    # load checkpoint
-    iteration = 1
-    if args.ckpt_pth != "":
-        model, optimizer, iteration = load_checkpoint(
-            args.ckpt_pth, model, optimizer, device, n_gpu
-        )
-        iteration += 1
+        if self.ckpt_path != "":
+            self._load_checkpoint(self.ckpt_dir, self.device)
+        else:
+            self.epoch = 1
 
-    # get scheduler
-    if hps.sch:
-        lr_lambda = lambda step: hps.sch_step**0.5 * min(
-            (step + 1) * hps.sch_step**-1.5, (step + 1) ** -0.5
+        self._build_env()
+        self._create_scheduler()
+
+    def _build_env(self):
+        if self.rank == 0:
+            logger.info(self.Tacotron2)
+            os.makedirs(self.ckpt_dir, exist_ok=True)
+            os.chmod(self.ckpt_dir, 0o775)
+            logger.info(f"Checkpoints directory: {self.ckpt_dir}")
+        
+            if self.logdir != "":
+                if not os.path.isdir(self.logdir):
+                    os.makedirs(self.logdir)
+                    os.chmod(self.logdir, 0o775)
+                self.logger = Tacotron2Logger(self.logdir)
+                        
+    def _create_scheduler(self, ckpt_path):
+        lr_lambda = lambda step: self.hparams.sch_step**0.5 * min(
+            (step + 1) * self.hparams.sch_step**-1.5, (step + 1) ** -0.5
         )
-        if args.ckpt_pth != "":
-            scheduler = torch.optim.lr_scheduler.LambdaLR(
-                optimizer, lr_lambda, last_epoch=iteration
+
+        if ckpt_path != "":
+            self.scheduler = torch.optim.lr_scheduler.LambdaLR(
+                self.optimizer, lr_lambda, last_epoch=self.epoch
             )
         else:
-            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+            self.scheduler = torch.optim.lr_scheduler.LambdaLR(
+                self.optimizer, lr_lambda
+            )
 
-    # make dataset
-    train_loader = Tacotron2Dataset.dataloader_factory(
-            metadata_path=args.metadata_path,
-            wavs_dir=args.wavs_dir,
-            num_gpus=hps.num_gpus,
+    def _load_checkpoint(self, ckpt_path, device):
+        assert os.path.isfile(ckpt_path)
+
+        logger.info(f"Loading checkpoint {ckpt_path}")
+
+        ckpt_dict = torch.load(ckpt_path, map_location=device)
+
+        self.Tacotron2.load_state_dict(ckpt_dict["Tacotron2"])
+        self.optimizer.load_state_dict(ckpt_dict["optimizer"])
+        self.epoch = ckpt_dict["epoch"] + 1
+
+    def _save_checkpoint(self, ckpt_path, num_gpus):
+        torch.save(
+            dict(
+                Tacotron2=(
+                    self.Tacotron2.module if num_gpus > 1 else self.Tacotron2
+                ).state_dict(),
+                optimizer=self.optimizer.state_dict(),
+                epoch=self.epoch,
+            ),
+            ckpt_path,
         )
 
-    if rank == 0:
-        # get logger ready
-        if args.log_dir != "":
-            if not os.path.isdir(args.log_dir):
-                os.makedirs(args.log_dir)
-                os.chmod(args.log_dir, 0o775)
-            logger = Tacotron2Logger(args.log_dir)
+    def train(self):
+        self.train_loader = Tacotron2Dataset.dataloader_factory(
+            metadata_path=self.input_args.metadata_path,
+            wavs_dir=self.input_args.wavs_dir,
+            num_gpus=self.num_gpus,
+        )
 
-        # get ckpt_dir ready
-        if args.ckpt_dir != "" and not os.path.isdir(args.ckpt_dir):
-            os.makedirs(args.ckpt_dir)
-            os.chmod(args.ckpt_dir, 0o775)
+        self.Tacotron2.train()
 
-    model.train()
-    # ================ MAIN TRAINNIG LOOP! ===================
-    epoch = 0
-    while iteration <= hps.max_iter:
-        if n_gpu > 1:
-            train_loader.sampler.set_epoch(epoch)
-        for batch in train_loader:
-            if iteration > hps.max_iter:
-                break
-            start = time.perf_counter()
-            x, y = (model.module if n_gpu > 1 else model).parse_batch(batch)
-            y_pred = model(x)
+        for epoch in range(self.epoch, hps.max_iter + self.epoch):
+            if self.num_gpus > 1:
+                self.train_loader.sampler.set_epoch(epoch)
 
-            # loss
-            loss, items = criterion(y_pred, y)
+            for batch in self.train_loader:
+                start = time.perf_counter()
 
-            # zero grad
-            model.zero_grad()
+                x, y = (self.Tacotron2.module if self.num_gpus > 1 else self.Tacotron2).parse_batch(batch)
 
-            # backward, grad_norm, and update
-            loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(
-                model.parameters(), hps.grad_clip_thresh
-            )
-            optimizer.step()
-            if hps.sch:
-                scheduler.step()
+                y_pred = self.Tacotron2(x)
 
-            dur = time.perf_counter() - start
-            if rank == 0:
-                # info
-                print(
-                    "Iter: {} Mel Loss: {:.2e} Gate Loss: {:.2e} Grad Norm: {:.2e} {:.1f}s/it".format(
-                        iteration, items[0], items[1], grad_norm, dur
-                    )
-                )
+                loss, items = self.criterion(y_pred, y)
 
-                # log
-                if args.log_dir != "" and (iteration % hps.iters_per_log == 0):
-                    learning_rate = optimizer.param_groups[0]["lr"]
-                    logger.log_training(items, grad_norm, learning_rate, iteration)
+                self.optimizer.zero_grad()
 
-                # sample
-                if args.log_dir != "" and (iteration % hps.iters_per_sample == 0):
-                    model.eval()
-                    output = infer(hps.eg_text, model.module if n_gpu > 1 else model)
-                    model.train()
-                    logger.sample_train(y_pred, iteration)
-                    logger.sample_infer(output, iteration)
-
-                # save ckpt
-                if args.ckpt_dir != "" and (iteration % hps.iters_per_ckpt == 0):
-                    ckpt_pth = os.path.join(args.ckpt_dir, "ckpt_{}".format(iteration))
-                    save_checkpoint(model, optimizer, iteration, ckpt_pth, n_gpu)
-
-            iteration += 1
-        epoch += 1
-
-    if rank == 0 and args.log_dir != "":
-        logger.close()
+                self.loss.backward()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "-w", "--wavs_dir", type=str, help="Directory where the .wav files are saved"
     )
@@ -182,24 +156,25 @@ if __name__ == "__main__":
         "-m", "--metadata_path", type=str, help="Directory where the metadata is saved"
     )
     parser.add_argument(
+        "-cd", "--ckpt_dir", type=str, help="In what directory to save checkpoints"
+    )
+    parser.add_argument(
+        "-cp",
+        "--ckpt_path",
+        type=str,
+        default="",
+        help="Path to checkpoint that will be loaded",
+    )
+    parser.add_argument(
         "-l",
-        "--log_dir",
+        "--logdir",
         type=str,
-        default="log",
-        help="directory to save tensorboard logs",
+        default="",
+        help="Directory where tensorboard logs are saved",
     )
-    parser.add_argument(
-        "-cd",
-        "--ckpt_dir",
-        type=str,
-        default="ckpt",
-        help="directory to save checkpoints",
-    )
-    parser.add_argument(
-        "-cp", "--ckpt_pth", type=str, default="", help="path to load checkpoints"
-    )
-    parser.add_argument('--local_rank', type = int, default = 0)
+    parser.add_argument("--local_rank", type=int, default=0)
 
     args = parser.parse_args()
 
-    train(args)
+    trainer = Tacotron2Trainer(input_args=args)
+    trainer.train()
