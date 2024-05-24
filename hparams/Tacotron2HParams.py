@@ -45,7 +45,7 @@ class Tacotron2HParams:
     eps = 1e-6
     sch_step = 4000
     max_iter = 200000
-    batch_size = 16
+    batch_size = 64
     iters_per_log = 10
     iters_per_sample = 500
     iters_per_ckpt = 10000
