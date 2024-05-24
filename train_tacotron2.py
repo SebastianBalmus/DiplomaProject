@@ -33,43 +33,7 @@ class Tacotron2Trainer:
         self.rank = self.local_rank = 0
         self.num_gpus = 1 # Default value
 
-        if "WORLD_SIZE" in os.environ:
-            os.environ["OMP_NUM_THREADS"] = str(hps.n_workers)
-            self.rank = int(os.environ["RANK"])
-            self.local_rank = int(os.environ["LOCAL_RANK"])
-            self.num_gpus = int(os.environ["WORLD_SIZE"])
-            torch.distributed.init_process_group(
-                backend="nccl", rank=self.local_rank, world_size=self.num_gpus
-            )
         
-        self.device = torch.device("cuda:{:d}".format(self.local_rank))
-
-        self.Tacotron2 = Tacotron2()
-        mode(self.Tacotron2, True)
-
-        if self.num_gpus > 1:
-            self.Tacotron2 = DistributedDataParallel(
-                self.Tacotron2, device_ids=[self.local_rank]
-            )
-        
-        self.optimizer = torch.optim.Adam(
-            self.Tacotron2.parameters(),
-            lr=hps.lr,
-            betas=hps.betas,
-            eps=hps.eps,
-            weight_decay=hps.weight_decay,
-        )
-
-        self.criterion = Tacotron2Loss()
-
-        if self.ckpt_path != "":
-            self._load_checkpoint(self.ckpt_dir, self.device)
-        else:
-            self.epoch = 1
-
-        self._build_env()
-        self._create_scheduler(self.ckpt_path)
-
     def _build_env(self):
         if self.rank == 0:
             logger.info(self.Tacotron2)
@@ -121,6 +85,44 @@ class Tacotron2Trainer:
         )
 
     def train(self):
+        if "WORLD_SIZE" in os.environ:
+            os.environ["OMP_NUM_THREADS"] = str(hps.n_workers)
+            self.rank = int(os.environ["RANK"])
+            self.local_rank = int(os.environ["LOCAL_RANK"])
+            self.num_gpus = int(os.environ["WORLD_SIZE"])
+            torch.distributed.init_process_group(
+                backend="nccl", rank=self.local_rank, world_size=self.num_gpus
+            )
+        
+        self.device = torch.device("cuda:{:d}".format(self.local_rank))
+
+        self.Tacotron2 = Tacotron2()
+        mode(self.Tacotron2, True)
+
+        if self.num_gpus > 1:
+            self.Tacotron2 = DistributedDataParallel(
+                self.Tacotron2, device_ids=[self.local_rank]
+            )
+        
+        self.optimizer = torch.optim.Adam(
+            self.Tacotron2.parameters(),
+            lr=hps.lr,
+            betas=hps.betas,
+            eps=hps.eps,
+            weight_decay=hps.weight_decay,
+        )
+
+        self.criterion = Tacotron2Loss()
+
+        if self.ckpt_path != "":
+            self._load_checkpoint(self.ckpt_dir, self.device)
+        else:
+            self.epoch = 1
+
+        self._build_env()
+        self._create_scheduler(self.ckpt_path)
+
+        # De AICI incepe train method
         self.train_loader = Tacotron2Dataset.dataloader_factory(
             metadata_path=self.metadata_path,
             wavs_dir=self.wavs_dir,
