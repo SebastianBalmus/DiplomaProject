@@ -33,7 +33,7 @@ class Tacotron2Trainer:
             )
 
         if self.rank == 0:
-            self.logger = logging.getLogger()
+            self.console_logger = logging.getLogger()
 
         # Generate a random seed for the current GPU
         torch.cuda.manual_seed(self.hparams.seed)
@@ -72,7 +72,7 @@ class Tacotron2Trainer:
 
     def _log_to_console(self, logtext):
         if self.rank == 0:
-            self.logger.info(logtext)
+            self.console_logger.info(logtext)
 
     def _load_checkpoint(self, ckpt_path, device):
         assert os.path.isfile(ckpt_path)
