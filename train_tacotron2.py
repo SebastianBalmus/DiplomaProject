@@ -2,7 +2,6 @@ import os
 import time
 import torch
 import argparse
-import warnings
 import numpy as np
 import logging
 import torch.multiprocessing as mp
@@ -18,17 +17,13 @@ from torch.nn.parallel import DistributedDataParallel
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = False
 
-warnings.simplefilter("ignore", UserWarning)
-
-logger = logging.getLogger(__name__)
-
 
 class Tacotron2Trainer:
     def __init__(self, rank, input_args, hparams):
         self.rank = rank
         self.input_args = input_args
         self.hparams = hparams
-        logger.warning('Am hparams')
+
         if self.hparams.num_gpus > 1:
             init_process_group(
                 backend=self.hparams.dist_backend,
@@ -36,21 +31,20 @@ class Tacotron2Trainer:
                 world_size=self.hparams.world_size * self.hparams.num_gpus,
                 rank=self.rank,
             )
-        logger.warning('Am init process gr')
+
+        if self.rank == 0:
+            self.logger = logging.getLogger()
 
         # Generate a random seed for the current GPU
         torch.cuda.manual_seed(self.hparams.seed)
 
         self.device = torch.device("cuda", self.rank)
-        logger.warning('Am device')
 
         self.Tacotron2 = Tacotron2().to(self.device)
-        logger.warning('Am tac')
 
-        if self.rank == 0:
-            logger.warning(self.Tacotron2)
-            os.makedirs(self.input_args.ckpt_dir, exist_ok=True)
-            logger.warning(f"Checkpoints directory: {self.input_args.ckpt_dir}")
+        self._log_to_console(self.Tacotron2)
+        os.makedirs(self.input_args.ckpt_dir, exist_ok=True)
+        self._log_to_console(f"Checkpoints directory: {self.input_args.ckpt_dir}")
 
         if self.hparams.num_gpus > 1:
             self.Tacotron2 = DistributedDataParallel(
@@ -76,10 +70,14 @@ class Tacotron2Trainer:
 
         self._create_scheduler(self.input_args.ckpt_path)
 
+    def _log_to_console(self, logtext):
+        if self.rank == 0:
+            self.logger.info(logtext)
+
     def _load_checkpoint(self, ckpt_path, device):
         assert os.path.isfile(ckpt_path)
 
-        logger.warning(f"Loading checkpoint {ckpt_path}")
+        self._log_to_console(f"Loading checkpoint {ckpt_path}")
 
         ckpt_dict = torch.load(ckpt_path, map_location=device)
 
@@ -117,14 +115,11 @@ class Tacotron2Trainer:
         return map(lambda item: item.to(self.device) if torch.is_tensor(item) else item, array)
 
     def train(self):
-        logger.warning('Am train')
-
         self.train_loader = Tacotron2Dataset.dataloader_factory(
             metadata_path=self.input_args.metadata_path,
             wavs_dir=self.input_args.wavs_dir,
             num_gpus=self.hparams.num_gpus,
         )
-        logger.warning('Am date')
 
         if self.rank == 0:
             if self.input_args.logdir != "":
@@ -141,7 +136,6 @@ class Tacotron2Trainer:
 
         self.Tacotron2.train()
 
-        logger.warning('Am inceput trainingul')
         for epoch in range(self.epoch, self.hparams.max_iter):
             if self.hparams.num_gpus > 1:
                 self.train_loader.sampler.set_epoch(epoch)
@@ -176,7 +170,7 @@ class Tacotron2Trainer:
                 duration = time.perf_counter() - start
 
                 if self.rank == 0:
-                    logger.warning(
+                    self._log_to_console(
                         f"Epoch: {epoch} Mel Loss: {items[0]:.2e} Gate Loss: {items[1]:.2e} Grad Norm: {grad_norm:.2e} {duration:.1f}s/it"
                     )
 
@@ -253,7 +247,6 @@ if __name__ == "__main__":
         torch.manual_seed(hparams.seed)
         hparams.num_gpus = torch.cuda.device_count()
         hparams.batch_size = hparams.batch_size // hparams.num_gpus
-        logger.warning(f"Batch size per GPU: {hparams.batch_size}")
 
     if hparams.num_gpus > 1:
         mp.spawn(multiprocessing_wrapper, nprocs=hparams.num_gpus, args=(args, hparams))
