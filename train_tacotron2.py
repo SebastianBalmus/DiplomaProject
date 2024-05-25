@@ -33,6 +33,7 @@ class Tacotron2Trainer:
             )
 
         if self.rank == 0:
+            logging.basicConfig(level=logging.INFO)
             self.console_logger = logging.getLogger()
 
         # Generate a random seed for the current GPU
