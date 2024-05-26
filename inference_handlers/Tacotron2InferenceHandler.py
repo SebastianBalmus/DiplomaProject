@@ -1,7 +1,6 @@
 import os
 import torch
 import logging
-import argparse
 from text import text_to_sequence
 from models.tacotron2 import Tacotron2
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
