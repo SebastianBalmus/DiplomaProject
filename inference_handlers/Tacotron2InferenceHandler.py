@@ -16,6 +16,18 @@ logger = logging.getLogger(__file__)
 
 
 class Tacotron2InferenceHandler:
+    """
+    Handler class for Tacotron2 inference.
+
+    Args:
+        args (argparse.Namespace): Arguments containing the checkpoint path.
+
+    Attributes:
+        args (argparse.Namespace): Arguments containing the checkpoint path.
+        device (torch.device): Device for model inference.
+        tacotron2 (Tacotron2): Tacotron2 model instance.
+    """
+
     def __init__(self, args):
         self.args = args.ckpt_pth
 
@@ -26,6 +38,9 @@ class Tacotron2InferenceHandler:
             self.device = torch.device('cpu')
 
     def _load_model(self):
+        """
+        Load Tacotron2 model from checkpoint.
+        """
         ckpt_pth = self.args.ckpt_pth
         assert os.path.isfile(ckpt_pth)
         logger.info(f"Loading checkpoint: {ckpt_pth}")
@@ -36,6 +51,15 @@ class Tacotron2InferenceHandler:
         self.tacotron2.eval()
 
     def infer(self, text):
+        """
+        Perform inference with Tacotron2 model.
+
+        Args:
+            text (str): Input text for inference.
+
+        Returns:
+            tuple: Tuple containing mel spectrogram outputs, postnet mel spectrogram outputs, and alignments.
+        """
         sequence = text_to_sequence(text, hps.text_cleaners)
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
         mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
@@ -43,12 +67,32 @@ class Tacotron2InferenceHandler:
 
     @staticmethod
     def static_infer(text, model, device):
+        """
+        Perform static inference with Tacotron2 model.
+
+        Args:
+            text (str): Input text for inference.
+            model (Tacotron2): Tacotron2 model instance.
+            device (torch.device): Device for inference.
+
+        Returns:
+            tuple: Tuple containing mel spectrogram outputs, postnet mel spectrogram outputs, and alignments.
+        """
         sequence = text_to_sequence(text, hps.text_cleaners)
         sequence = torch.IntTensor(sequence)[None, :].long().to(device)
         mel_outputs, mel_outputs_postnet, _, alignments = model.inference(sequence)
         return (mel_outputs, mel_outputs_postnet, alignments)
 
     def audio(self, output):
+        """
+        Convert mel spectrogram output to audio waveform using the Griffin-Lim algorithm.
+
+        Args:
+            output (tuple): Tuple containing mel spectrogram outputs, postnet mel spectrogram outputs, and alignments.
+
+        Returns:
+            numpy.ndarray: Audio waveform.
+        """
         _, mel_outputs_postnet, _ = output
         wav_postnet = inv_melspectrogram(to_arr(mel_outputs_postnet[0]))
         return wav_postnet

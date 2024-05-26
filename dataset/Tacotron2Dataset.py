@@ -14,6 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 class Tacotron2Dataset(Dataset):
+    """
+    Dataset class for Tacotron2 model.
+
+    Args:
+        metadata_path (str): Path to the metadata CSV file containing LJ Speech dataset information.
+        wavs_dir (str): Directory containing the audio files.
+        n_frames_per_step (int): Number of frames per step.
+
+    Attributes:
+        n_frames_per_step (int): Number of frames per step.
+        metadata (list): List containing metadata from the CSV file.
+        data (list): List containing text-mel pairs.
+    """
+
     def __init__(self, metadata_path, wavs_dir, n_frames_per_step):
         self.n_frames_per_step = n_frames_per_step
         self._read_metadata(metadata_path)
@@ -37,11 +51,27 @@ class Tacotron2Dataset(Dataset):
             self.data.append(text_mel_pair)
 
     def _read_metadata(self, metadata_path):
+        """
+        Reads metadata from the CSV file.
+
+        Args:
+            metadata_path (str): Path to the metadata CSV file.
+        """
         with open(metadata_path, encoding="utf-8") as f:
             reader = csv.reader(f, delimiter="|")
             self.metadata = list(reader)
 
     def _get_text_mel_pair(self, text, wav_path):
+        """
+        Processes text and wav files to obtain text-mel pairs.
+
+        Args:
+            text (str): Text content.
+            wav_path (str): Path to the wav file.
+
+        Returns:
+            dict: Dictionary containing text and mel spectrogram.
+        """
         text = torch.IntTensor(text_to_sequence(text, hps.text_cleaners))
         wav = load_wav(wav_path)
         mel = torch.Tensor(melspectrogram(wav).astype(np.float32))
@@ -49,6 +79,15 @@ class Tacotron2Dataset(Dataset):
         return dict(text=text, mel=mel)
 
     def __getitem__(self, index):
+        """
+        Retrieves item from the dataset at the specified index.
+
+        Args:
+            index (int): Index of the item to retrieve.
+
+        Returns:
+            tuple: A tuple containing text and mel spectrogram.
+        """
         text_mel_pair = self.data[index]
         text = text_mel_pair["text"]
         mel = text_mel_pair["mel"]
@@ -56,9 +95,25 @@ class Tacotron2Dataset(Dataset):
         return text, mel
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Returns:
+            int: Length of the dataset.
+        """
         return len(self.data)
 
     def collate_fn(self, batch):
+        """
+        Collates the data into batches.
+
+        Args:
+            batch (list): List of tuples containing text and mel spectrogram pairs.
+
+        Returns:
+            tuple: A tuple containing padded text, input lengths, padded mel spectrograms, gate values, and output lengths.
+        """
+
         # Right zero-pad all one-hot text sequences to max input length
         input_lengths, ids_sorted_decreasing = torch.sort(
             torch.LongTensor([len(x[0]) for x in batch]), dim=0, descending=True
@@ -96,6 +151,17 @@ class Tacotron2Dataset(Dataset):
 
     @staticmethod
     def dataloader_factory(metadata_path, wavs_dir, num_gpus):
+        """
+        Creates a DataLoader instance for Tacotron2 dataset.
+
+        Args:
+            metadata_path (str): Path to the metadata CSV file.
+            wavs_dir (str): Directory containing the audio files.
+            num_gpus (int): Number of GPUs.
+
+        Returns:
+            torch.utils.data.DataLoader: DataLoader instance for Tacotron2 dataset.
+        """
         dataset = Tacotron2Dataset(
             metadata_path=metadata_path,
             wavs_dir=wavs_dir,

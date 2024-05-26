@@ -5,7 +5,22 @@ import argparse
 
 
 def split_ljspeech(metadata_path, save_dir, validation_size=0.1, seed=88):
+    """
+    Splits the LJ Speech dataset metadata into train and validation sets.
 
+    Args:
+        metadata_path (str): Path to the metadata CSV file containing LJ Speech dataset information.
+        save_dir (str): Directory where the split dataset will be saved.
+        validation_size (float, optional): Fraction of the dataset to include in the validation set. Defaults to 0.1.
+        seed (int, optional): Seed for random shuffling of the dataset. Defaults to 88.
+
+    Raises:
+        AssertionError: If metadata_path does not exist.
+
+    Note:
+        The metadata CSV file is expected to have entries separated by '|' delimiter.
+
+    """
     assert os.path.exists(metadata_path)
 
     # Read the data from the file
@@ -14,7 +29,7 @@ def split_ljspeech(metadata_path, save_dir, validation_size=0.1, seed=88):
         data = list(reader)
 
     # Shuffle the data to ensure random splitting
-    random.seed(88)
+    random.seed(seed)
     random.shuffle(seed)
 
     # Calculate the split index
