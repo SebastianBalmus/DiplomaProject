@@ -4,11 +4,33 @@ from hparams.Tacotron2HParams import Tacotron2HParams as hps
 
 
 class Tacotron2Loss(torch.nn.Module):
+    """
+    Loss function for Tacotron 2 model.
+
+    Computes the combined loss for mel spectrogram prediction and stop token prediction.
+
+    Attributes:
+        loss (torch.nn.MSELoss): Mean squared error loss function for mel spectrogram prediction.
+
+    """
+
     def __init__(self):
         super(Tacotron2Loss, self).__init__()
         self.loss = torch.nn.MSELoss(reduction="none")
 
     def forward(self, model_outputs, targets):
+        """
+        Compute the loss for Tacotron 2 model.
+
+        Args:
+            model_outputs (tuple): Tuple containing model outputs including mel spectrogram predictions, postnet mel spectrogram predictions, gate predictions, and alignment predictions.
+            targets (tuple): Tuple containing target values including target mel spectrograms, gate targets, and output lengths.
+
+        Returns:
+            torch.Tensor: Combined loss value.
+            tuple: Tuple containing individual losses for mel spectrogram prediction and gate prediction.
+
+        """
         mel_out, mel_out_postnet, gate_out, _ = model_outputs
         gate_out = gate_out.view(-1, 1)
 

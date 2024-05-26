@@ -26,15 +26,16 @@ build_image() {
         $DOCKER_COMMAND pull "$IMAGE_NAME:$PYTORCH_TAG"
     fi
 
+    # If there is an existing container, delete it
+    if $DOCKER_COMMAND ps -a | grep -q "$CONTAINER_NAME"; then
+        $DOCKER_COMMAND stop "$CONTAINER_NAME"
+        $DOCKER_COMMAND rm "$CONTAINER_NAME"
+    fi
+
     # If the image already exists, delete it
     if $DOCKER_COMMAND images | grep -q "$IMAGE_NAME"; then
         IMAGE_ID=$($DOCKER_COMMAND images --format "{{.ID}}" "$IMAGE_NAME")
         $DOCKER_COMMAND rmi "$IMAGE_ID"
-    fi
-
-    if $DOCKER_COMMAND ps -a | grep -q "$CONTAINER_NAME"; then
-        $DOCKER_COMMAND stop "$CONTAINER_NAME"
-        $DOCKER_COMMAND rm "$CONTAINER_NAME"
     fi
 
     # Rebuild the image

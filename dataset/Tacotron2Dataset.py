@@ -22,10 +22,10 @@ class Tacotron2Dataset(Dataset):
 
         for id_text_pair in tqdm(
             self.metadata,
-            desc='Loading dataset',
+            desc="Loading dataset",
             miniters=int(len(self.metadata) / 100),
             leave=True,
-            position=0
+            position=0,
         ):
             assert len(id_text_pair) >= 2
             id = id_text_pair[0]
@@ -99,7 +99,7 @@ class Tacotron2Dataset(Dataset):
         dataset = Tacotron2Dataset(
             metadata_path=metadata_path,
             wavs_dir=wavs_dir,
-            n_frames_per_step=hps.n_frames_per_step
+            n_frames_per_step=hps.n_frames_per_step,
         )
         sampler = DistributedSampler(dataset) if num_gpus > 1 else None
 
@@ -115,4 +115,3 @@ class Tacotron2Dataset(Dataset):
         )
 
         return data_loader
-

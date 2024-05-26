@@ -3,14 +3,6 @@ import numpy as np
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 
 
-def mode(obj, model=False):
-    if model and hps.is_cuda:
-        obj = obj.cuda()
-    elif hps.is_cuda:
-        obj = obj.cuda(non_blocking=hps.pin_mem)
-    return obj
-
-
 def to_arr(var):
     return var.cpu().detach().numpy().astype(np.float32)
 

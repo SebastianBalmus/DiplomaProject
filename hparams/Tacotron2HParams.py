@@ -4,24 +4,16 @@ from text import symbols
 class Tacotron2HParams:
     seed = 88
 
-
-    ################################
-    # Distributed  Training        #
-    ################################
+    # Distributed  Training
     num_gpus = 0
-    dist_backend = 'nccl'
-    dist_url = 'tcp://localhost:54321'
+    dist_backend = "nccl"
+    dist_url = "tcp://localhost:54321"
     world_size = 1
-    text_cleaners=['english_cleaners']
 
-    ################################
-    # Data Parameters              #
-    ################################
-    text_cleaners=['english_cleaners']
+    # Data Parameters
+    text_cleaners = ["english_cleaners"]
 
-    ################################
-    # Audio                        #
-    ################################
+    # Audio
     num_mels = 80
     num_freq = 513
     sample_rate = 22050
@@ -32,14 +24,11 @@ class Tacotron2HParams:
     power = 1.5
     gl_iters = 30
 
-    ################################
-    # Train                        #
-    ################################
+    # Train
     is_cuda = True
     pin_mem = True
     n_workers = 4
     prep = True
-    pth = 'lj-22k.pkl'
     lr = 2e-3
     betas = (0.9, 0.999)
     eps = 1e-6
@@ -51,11 +40,9 @@ class Tacotron2HParams:
     iters_per_ckpt = 10000
     weight_decay = 1e-6
     grad_clip_thresh = 1.0
-    eg_text = 'OMAK is a thinking process which considers things always positively.'
+    eg_text = "OMAK is a thinking process which considers things always positively."
 
-    ################################
-    # Model Parameters             #
-    ################################
+    # Model Parameters
     n_symbols = len(symbols)
     symbols_embedding_dim = 512
 

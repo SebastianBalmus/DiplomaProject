@@ -5,10 +5,10 @@ import argparse
 import numpy as np
 import logging
 import torch.multiprocessing as mp
-from inference_handlers.Tacotron2InferenceHandler import infer
+from inference_handlers.Tacotron2InferenceHandler import Tacotron2InferenceHandler
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from dataset.Tacotron2Dataset import Tacotron2Dataset
-from utils.logger import Tacotron2Logger
+from tensorboard_logging.Tacotron2Logger import Tacotron2Logger
 from models.tacotron2.Tacotron2 import Tacotron2
 from models.tacotron2.Loss import Tacotron2Loss
 from torch.distributed import init_process_group, destroy_process_group
@@ -113,7 +113,9 @@ class Tacotron2Trainer:
             )
 
     def map_array_to_gpu(self, array):
-        return map(lambda item: item.to(self.device) if torch.is_tensor(item) else item, array)
+        return map(
+            lambda item: item.to(self.device) if torch.is_tensor(item) else item, array
+        )
 
     def train(self):
         self.train_loader = Tacotron2Dataset.dataloader_factory(
@@ -183,7 +185,7 @@ class Tacotron2Trainer:
 
                     if epoch % self.hparams.iters_per_sample == 0:
                         self.Tacotron2.eval()
-                        output = infer(
+                        output = Tacotron2InferenceHandler.static_infer(
                             self.hparams.eg_text,
                             (
                                 self.Tacotron2.module
@@ -203,7 +205,7 @@ class Tacotron2Trainer:
 
         if self.rank == 0 and self.input_args.logdir:
             self.logger.close()
-        
+
         if self.hparams.num_gpus > 1:
             destroy_process_group()
 

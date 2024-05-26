@@ -5,6 +5,25 @@ from .Location import Location
 
 
 class Attention(torch.nn.Module):
+    """
+    Attention mechanism used in Tacotron 2.
+
+    Args:
+        attention_rnn_dim (int): Dimensionality of the attention RNN output.
+        embedding_dim (int): Dimensionality of the input embeddings (encoder outputs).
+        attention_dim (int): Dimensionality of the attention mechanism.
+        attention_location_n_filters (int): Number of filters for the location-based attention mechanism.
+        attention_location_kernel_size (int): Kernel size for the location-based attention mechanism.
+
+    Attributes:
+        query_layer (LinearNorm): Linear layer for processing decoder outputs.
+        memory_layer (LinearNorm): Linear layer for processing encoder outputs.
+        v (LinearNorm): Linear layer for computing attention energies.
+        location_layer (Location): Location-based attention mechanism.
+        score_mask_value (float): Value used for masking padded data in attention scores.
+
+    """
+
     def __init__(
         self,
         attention_rnn_dim,
@@ -28,15 +47,16 @@ class Attention(torch.nn.Module):
 
     def get_alignment_energies(self, query, processed_memory, attention_weights_cat):
         """
-        PARAMS
-        ------
-        query: decoder output (batch, num_mels * n_frames_per_step)
-        processed_memory: processed encoder outputs (B, T_in, attention_dim)
-        attention_weights_cat: cumulative and prev. att weights (B, 2, max_time)
+        Compute attention energies.
 
-        RETURNS
-        -------
-        alignment (batch, max_time)
+        Args:
+            query (torch.Tensor): Decoder output tensor of shape (batch_size, decoder_dim).
+            processed_memory (torch.Tensor): Processed encoder outputs tensor of shape (batch_size, max_time, attention_dim).
+            attention_weights_cat (torch.Tensor): Concatenated previous and cumulative attention weights tensor of shape (batch_size, 2, max_time).
+
+        Returns:
+            torch.Tensor: Attention energies tensor of shape (batch_size, max_time).
+
         """
 
         processed_query = self.query_layer(query.unsqueeze(1))
@@ -57,13 +77,19 @@ class Attention(torch.nn.Module):
         mask,
     ):
         """
-        PARAMS
-        ------
-        attention_hidden_state: attention rnn last output
-        memory: encoder outputs
-        processed_memory: processed encoder outputs
-        attention_weights_cat: previous and cummulative attention weights
-        mask: binary mask for padded data
+        Compute attention context vector and attention weights.
+
+        Args:
+            attention_hidden_state (torch.Tensor): Last output of the attention RNN of shape (batch_size, attention_rnn_dim).
+            memory (torch.Tensor): Encoder outputs tensor of shape (batch_size, max_time, embedding_dim).
+            processed_memory (torch.Tensor): Processed encoder outputs tensor of shape (batch_size, max_time, attention_dim).
+            attention_weights_cat (torch.Tensor): Concatenated previous and cumulative attention weights tensor of shape (batch_size, 2, max_time).
+            mask (torch.Tensor): Binary mask tensor for padded data of shape (batch_size, max_time).
+
+        Returns:
+            torch.Tensor: Attention context vector of shape (batch_size, embedding_dim).
+            torch.Tensor: Attention weights tensor of shape (batch_size, max_time).
+
         """
         alignment = self.get_alignment_energies(
             attention_hidden_state, processed_memory, attention_weights_cat

@@ -9,6 +9,28 @@ from utils.util import get_mask_from_lengths
 
 
 class Decoder(torch.nn.Module):
+    """
+    Tacotron2 Decoder module.
+
+    - Prenet for processing decoder inputs.
+    - Attention RNN for computing attention context.
+    - Attention mechanism for focusing on encoder outputs.
+    - Decoder RNN for generating mel-spectrogram frames.
+    - Linear projection layer for generating mel outputs.
+    - Gate layer for predicting end-of-sequence.
+
+    Args:
+        None
+
+    Attributes:
+        prenet (Prenet): Prenet for processing decoder inputs.
+        attention_rnn (torch.nn.LSTMCell): LSTM cell for attention RNN.
+        attention_layer (Attention): Attention mechanism.
+        decoder_rnn (torch.nn.LSTMCell): LSTM cell for decoder RNN.
+        linear_projection (LinearNorm): Linear layer for generating mel outputs.
+        gate_layer (LinearNorm): Linear layer for predicting end-of-sequence gate.
+    """
+
     def __init__(self):
         super(Decoder, self).__init__()
         self.prenet = Prenet(
@@ -44,14 +66,14 @@ class Decoder(torch.nn.Module):
         )
 
     def get_go_frame(self, memory):
-        """Gets all zeros frames to use as first decoder input
-        PARAMS
-        ------
-        memory: decoder outputs
+        """
+        Gets all zeros frames to use as first decoder input.
 
-        RETURNS
-        -------
-        decoder_input: all zeros frames
+        Args:
+            memory (torch.Tensor): Encoder outputs.
+
+        Returns:
+            torch.Tensor: All zeros frames of shape (batch_size, num_mels * n_frames_per_step).
         """
         B = memory.size(0)
         decoder_input = Variable(
@@ -60,13 +82,12 @@ class Decoder(torch.nn.Module):
         return decoder_input
 
     def initialize_decoder_states(self, memory, mask):
-        """Initializes attention rnn states, decoder rnn states, attention
-        weights, attention cumulative weights, attention context, stores memory
-        and stores processed memory
-        PARAMS
-        ------
-        memory: Encoder outputs
-        mask: Mask for padded data if training, expects None for inference
+        """
+        Initializes the decoder states.
+
+        Args:
+            memory (torch.Tensor): Encoder outputs.
+            mask (torch.Tensor): Mask for padded data if training, None for inference.
         """
         B = memory.size(0)
         MAX_TIME = memory.size(1)
@@ -92,15 +113,14 @@ class Decoder(torch.nn.Module):
         self.mask = mask
 
     def parse_decoder_inputs(self, decoder_inputs):
-        """Prepares decoder inputs, i.e. mel outputs
-        PARAMS
-        ------
-        decoder_inputs: inputs used for teacher-forced training, i.e. mel-specs
+        """
+        Prepares decoder inputs for training.
 
-        RETURNS
-        -------
-        inputs: processed decoder inputs
+        Args:
+            decoder_inputs (torch.Tensor): Decoder inputs for teacher-forced training, i.e., mel-spectrograms.
 
+        Returns:
+            torch.Tensor: Processed decoder inputs of shape (T_out, batch_size, num_mels * n_frames_per_step).
         """
         # (B, num_mels, T_out) -> (B, T_out, num_mels)
         decoder_inputs = decoder_inputs.transpose(1, 2).contiguous()
@@ -114,18 +134,16 @@ class Decoder(torch.nn.Module):
         return decoder_inputs
 
     def parse_decoder_outputs(self, mel_outputs, gate_outputs, alignments):
-        """Prepares decoder outputs for output
-        PARAMS
-        ------
-        mel_outputs:
-        gate_outputs: gate output energies
-        alignments:
+        """
+        Prepares decoder outputs for output.
 
-        RETURNS
-        -------
-        mel_outputs:
-        gate_outpust: gate output energies
-        alignments:
+        Args:
+            mel_outputs (list of torch.Tensor): List of mel outputs.
+            gate_outputs (list of torch.Tensor): List of gate output energies.
+            alignments (list of torch.Tensor): List of attention weights.
+
+        Returns:
+            tuple: Tuple containing processed mel outputs, gate outputs, and alignments.
         """
         # (T_out, B) -> (B, T_out)
         alignments = torch.stack(alignments).transpose(0, 1)
@@ -141,16 +159,14 @@ class Decoder(torch.nn.Module):
         return mel_outputs, gate_outputs, alignments
 
     def decode(self, decoder_input):
-        """Decoder step using stored states, attention and memory
-        PARAMS
-        ------
-        decoder_input: previous mel output
+        """
+        Decoder step using stored states, attention, and memory.
 
-        RETURNS
-        -------
-        mel_output:
-        gate_output: gate output energies
-        attention_weights:
+        Args:
+            decoder_input (torch.Tensor): Previous mel output.
+
+        Returns:
+            tuple: Tuple containing mel output, gate output, and attention weights.
         """
         cell_input = torch.cat((decoder_input, self.attention_context), -1)
         self.attention_hidden, self.attention_cell = self.attention_rnn(
@@ -193,18 +209,16 @@ class Decoder(torch.nn.Module):
         return decoder_output, gate_prediction, self.attention_weights
 
     def forward(self, memory, decoder_inputs, memory_lengths):
-        """Decoder forward pass for training
-        PARAMS
-        ------
-        memory: Encoder outputs
-        decoder_inputs: Decoder inputs for teacher forcing. i.e. mel-specs
-        memory_lengths: Encoder output lengths for attention masking.
+        """
+        Decoder forward pass for training.
 
-        RETURNS
-        -------
-        mel_outputs: mel outputs from the decoder
-        gate_outputs: gate outputs from the decoder
-        alignments: sequence of attention weights from the decoder
+        Args:
+            memory (torch.Tensor): Encoder outputs.
+            decoder_inputs (torch.Tensor): Decoder inputs for teacher forcing, i.e., mel-spectrograms.
+            memory_lengths (torch.Tensor): Encoder output lengths for attention masking.
+
+        Returns:
+            tuple: Tuple containing mel outputs, gate outputs, and alignments.
         """
         decoder_input = self.get_go_frame(memory).unsqueeze(0)
         decoder_inputs = self.parse_decoder_inputs(decoder_inputs)
@@ -228,16 +242,14 @@ class Decoder(torch.nn.Module):
         return mel_outputs, gate_outputs, alignments
 
     def inference(self, memory):
-        """Decoder inference
-        PARAMS
-        ------
-        memory: Encoder outputs
+        """
+        Decoder inference.
 
-        RETURNS
-        -------
-        mel_outputs: mel outputs from the decoder
-        gate_outputs: gate outputs from the decoder
-        alignments: sequence of attention weights from the decoder
+        Args:
+            memory (torch.Tensor): Encoder outputs.
+
+        Returns:
+            tuple: Tuple containing mel outputs, gate outputs, and alignments.
         """
         decoder_input = self.get_go_frame(memory)
 

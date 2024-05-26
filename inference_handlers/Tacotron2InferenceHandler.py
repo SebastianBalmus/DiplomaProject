@@ -1,93 +1,55 @@
+import os
 import torch
-import numpy as np
-import matplotlib.pylab as plt
+import logging
+import argparse
 from text import text_to_sequence
 from models.tacotron2 import Tacotron2
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
-from utils.util import mode, to_arr
-from utils.audio import save_wav, inv_melspectrogram
+from utils.util import to_arr
+from utils.audio import inv_melspectrogram
 
 
-def load_model(ckpt_pth):
-    ckpt_dict = torch.load(ckpt_pth)
-    model = Tacotron2()
-    model.load_state_dict(ckpt_dict["model"])
-    model = mode(model, True).eval()
-    return model
+torch.backends.cudnn.enabled = True
+torch.backends.cudnn.benchmark = False
 
 
-def infer(text, model):
-    sequence = text_to_sequence(text, hps.text_cleaners)
-    sequence = mode(torch.IntTensor(sequence)[None, :]).long()
-    mel_outputs, mel_outputs_postnet, _, alignments = model.inference(sequence)
-    return (mel_outputs, mel_outputs_postnet, alignments)
+logger = logging.getLogger(__file__)
 
 
-def plot_data(data, figsize=(16, 4)):
-    fig, axes = plt.subplots(1, len(data), figsize=figsize)
-    for i in range(len(data)):
-        axes[i].imshow(data[i], aspect="auto", origin="bottom")
+class Tacotron2InferenceHandler:
+    def __init__(self, args):
+        self.args = args.ckpt_pth
 
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(hps.seed)
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
 
-def plot(output, pth):
-    mel_outputs, mel_outputs_postnet, alignments = output
-    plot_data(
-        (
-            to_arr(mel_outputs[0]),
-            to_arr(mel_outputs_postnet[0]),
-            to_arr(alignments[0]).T,
-        )
-    )
-    plt.savefig(pth + ".png")
+    def _load_model(self):
+        ckpt_pth = self.args.ckpt_pth
+        assert os.path.isfile(ckpt_pth)
+        logger.info(f"Loading checkpoint: {ckpt_pth}")
+        ckpt_dict = torch.load(ckpt_pth)
+        self.tacotron2 = Tacotron2()
+        self.tacotron2.load_state_dict(ckpt_dict["Tacotron2"])
+        self.tacotron2 = self.tacotron2.to(self.device)
+        self.tacotron2.eval()
 
+    def infer(self, text):
+        sequence = text_to_sequence(text, hps.text_cleaners)
+        sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
+        mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
+        return (mel_outputs, mel_outputs_postnet, alignments)
 
-def audio(output, pth):
-    mel_outputs, mel_outputs_postnet, _ = output
-    wav_postnet = inv_melspectrogram(to_arr(mel_outputs_postnet[0]))
-    save_wav(wav_postnet, pth + ".wav")
+    @staticmethod
+    def static_infer(text, model, device):
+        sequence = text_to_sequence(text, hps.text_cleaners)
+        sequence = torch.IntTensor(sequence)[None, :].long().to(device)
+        mel_outputs, mel_outputs_postnet, _, alignments = model.inference(sequence)
+        return (mel_outputs, mel_outputs_postnet, alignments)
 
-
-def save_mel(output, pth):
-    mel_outputs, mel_outputs_postnet, _ = output
-    np.save(pth + ".npy", to_arr(mel_outputs_postnet))
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-c",
-        "--ckpt_pth",
-        type=str,
-        default="",
-        required=True,
-        help="path to load checkpoints",
-    )
-    parser.add_argument(
-        "-i", "--img_pth", type=str, default="", help="path to save images"
-    )
-    parser.add_argument(
-        "-w", "--wav_pth", type=str, default="", help="path to save wavs"
-    )
-    parser.add_argument(
-        "-n", "--npy_pth", type=str, default="", help="path to save mels"
-    )
-    parser.add_argument(
-        "-t",
-        "--text",
-        type=str,
-        default="Tacotron is awesome.",
-        help="text to synthesize",
-    )
-
-    args = parser.parse_args()
-
-    torch.backends.cudnn.enabled = True
-    torch.backends.cudnn.benchmark = False
-    model = load_model(args.ckpt_pth)
-    output = infer(args.text, model)
-    if args.img_pth != "":
-        plot(output, args.img_pth)
-    if args.wav_pth != "":
-        audio(output, args.wav_pth)
-    if args.npy_pth != "":
-        save_mel(output, args.npy_pth)
+    def audio(self, output):
+        _, mel_outputs_postnet, _ = output
+        wav_postnet = inv_melspectrogram(to_arr(mel_outputs_postnet[0]))
+        return wav_postnet
