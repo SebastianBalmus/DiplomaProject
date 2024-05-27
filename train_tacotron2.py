@@ -182,7 +182,9 @@ class Tacotron2Trainer:
                         self.iteration % self.hparams.iters_per_log == 0
                     ):
                         learning_rate = self.optimizer.param_groups[0]["lr"]
-                        self.logger.log_training(items, grad_norm, learning_rate, self.iteration)
+                        self.logger.log_training(
+                            items, grad_norm, learning_rate, self.iteration
+                        )
 
                     if self.iteration % self.hparams.iters_per_sample == 0:
                         self.Tacotron2.eval()
@@ -203,6 +205,10 @@ class Tacotron2Trainer:
                             self.input_args.ckpt_dir, f"ckpt_{self.iteration}"
                         )
                         self._save_checkpoint(ckpt_path, self.hparams.num_gpus)
+
+                self.iteration += 1
+
+            self.epoch += 1
 
         if self.rank == 0 and self.input_args.logdir:
             self.logger.close()
