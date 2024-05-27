@@ -67,7 +67,7 @@ class Tacotron2Trainer:
             self._load_checkpoint(self.input_args.ckpt_path, self.device)
         else:
             self.is_checkpoint = False
-            self.epoch = 1
+            self.iteration = 1
 
         self._create_scheduler(self.input_args.ckpt_path)
 
@@ -84,7 +84,7 @@ class Tacotron2Trainer:
 
         self.Tacotron2.load_state_dict(ckpt_dict["Tacotron2"])
         self.optimizer.load_state_dict(ckpt_dict["optimizer"])
-        self.epoch = ckpt_dict["epoch"] + 1
+        self.iteration = ckpt_dict["iteration"] + 1
 
     def _save_checkpoint(self, ckpt_path, num_gpus):
         torch.save(
@@ -93,7 +93,7 @@ class Tacotron2Trainer:
                     self.Tacotron2.module if num_gpus > 1 else self.Tacotron2
                 ).state_dict(),
                 optimizer=self.optimizer.state_dict(),
-                epoch=self.epoch,
+                iteration=self.iteration,
             ),
             ckpt_path,
         )
@@ -105,7 +105,7 @@ class Tacotron2Trainer:
 
         if ckpt_path != "":
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(
-                self.optimizer, lr_lambda, last_epoch=self.epoch
+                self.optimizer, lr_lambda, last_epoch=self.iteration
             )
         else:
             self.scheduler = torch.optim.lr_scheduler.LambdaLR(
@@ -139,7 +139,8 @@ class Tacotron2Trainer:
 
         self.Tacotron2.train()
 
-        for epoch in range(self.epoch, self.hparams.max_iter):
+        epoch = 0
+        while self.iteration <= self.hparams.max_iter:
             if self.hparams.num_gpus > 1:
                 self.train_loader.sampler.set_epoch(epoch)
 
@@ -174,16 +175,16 @@ class Tacotron2Trainer:
 
                 if self.rank == 0:
                     self._log_to_console(
-                        f"Epoch: {epoch} Mel Loss: {items[0]:.2e} Gate Loss: {items[1]:.2e} Grad Norm: {grad_norm:.2e} {duration:.1f}s/it"
+                        f"Iteration: {self.iteration} Mel Loss: {items[0]:.2e} Gate Loss: {items[1]:.2e} Grad Norm: {grad_norm:.2e} {duration:.1f}s/it"
                     )
 
                     if self.input_args.logdir and (
-                        epoch % self.hparams.iters_per_log == 0
+                        self.iteration % self.hparams.iters_per_log == 0
                     ):
                         learning_rate = self.optimizer.param_groups[0]["lr"]
-                        self.logger.log_training(items, grad_norm, learning_rate, epoch)
+                        self.logger.log_training(items, grad_norm, learning_rate, self.iteration)
 
-                    if epoch % self.hparams.iters_per_sample == 0:
+                    if self.iteration % self.hparams.iters_per_sample == 0:
                         self.Tacotron2.eval()
                         output = Tacotron2InferenceHandler.static_infer(
                             self.hparams.eg_text,
@@ -194,12 +195,12 @@ class Tacotron2Trainer:
                             ),
                         )
                         self.Tacotron2.train()
-                        self.logger.sample_train(y_pred, epoch)
-                        self.logger.sample_infer(output, epoch)
+                        self.logger.sample_train(y_pred, self.iteration)
+                        self.logger.sample_infer(output, self.iteration)
 
-                    if epoch % self.hparams.iters_per_ckpt == 0:
+                    if self.iteration % self.hparams.iters_per_ckpt == 0:
                         ckpt_path = os.path.join(
-                            self.input_args.ckpt_dir, f"ckpt_{epoch}"
+                            self.input_args.ckpt_dir, f"ckpt_{self.iteration}"
                         )
                         self._save_checkpoint(ckpt_path, self.hparams.num_gpus)
 
