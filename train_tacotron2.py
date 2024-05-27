@@ -208,7 +208,7 @@ class Tacotron2Trainer:
 
                 self.iteration += 1
 
-            self.epoch += 1
+            epoch += 1
 
         if self.rank == 0 and self.input_args.logdir:
             self.logger.close()
