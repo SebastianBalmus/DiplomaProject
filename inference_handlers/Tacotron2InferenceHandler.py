@@ -2,7 +2,7 @@ import os
 import torch
 import logging
 from text import text_to_sequence
-from models.tacotron2 import Tacotron2
+from models.tacotron2.Tacotron2 import Tacotron2
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from utils.util import to_arr
 from utils.audio import inv_melspectrogram
@@ -20,28 +20,27 @@ class Tacotron2InferenceHandler:
     Handler class for Tacotron2 inference.
 
     Args:
-        args (argparse.Namespace): Arguments containing the checkpoint path.
+        ckpt_pth (str): Checkpoint path.
 
     Attributes:
-        args (argparse.Namespace): Arguments containing the checkpoint path.
+        ckpt_pth (str): Checkpoint path.
         device (torch.device): Device for model inference.
         tacotron2 (Tacotron2): Tacotron2 model instance.
     """
 
-    def __init__(self, args):
-        self.args = args.ckpt_pth
-
-        if torch.cuda.is_available():
+    def __init__(self, ckpt_pth, use_cuda):
+        if torch.cuda.is_available() and use_cuda is True:
             torch.cuda.manual_seed(hps.seed)
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
+            
+        self._load_model(ckpt_pth)
 
-    def _load_model(self):
+    def _load_model(self, ckpt_pth):
         """
         Load Tacotron2 model from checkpoint.
         """
-        ckpt_pth = self.args.ckpt_pth
         assert os.path.isfile(ckpt_pth)
         logger.info(f"Loading checkpoint: {ckpt_pth}")
         ckpt_dict = torch.load(ckpt_pth)
@@ -96,3 +95,5 @@ class Tacotron2InferenceHandler:
         _, mel_outputs_postnet, _ = output
         wav_postnet = inv_melspectrogram(to_arr(mel_outputs_postnet[0]))
         return wav_postnet
+
+

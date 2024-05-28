@@ -195,6 +195,7 @@ class Tacotron2Trainer:
                                 if self.hparams.num_gpus > 1
                                 else self.Tacotron2
                             ),
+                            self.device,
                         )
                         self.Tacotron2.train()
                         self.logger.sample_train(y_pred, self.iteration)
