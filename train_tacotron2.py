@@ -19,6 +19,25 @@ torch.backends.cudnn.benchmark = False
 
 
 class Tacotron2Trainer:
+    """
+    The Tacotron2Trainer class is responsible for managing the training process
+    of the Tacotron2 model. This class handles model initialization, training loop,
+    checkpointing, logging, and distributed training setup.
+
+    Attributes:
+        rank (int): Rank of the current process for distributed training.
+        input_args (argparse.Namespace): Command line arguments for configuration.
+        hparams (Tacotron2HParams): Hyperparameters for configuring the Tacotron2 model.
+        device (torch.device): The CUDA device assigned to the current process.
+        Tacotron2 (Tacotron2): The Tacotron2 model instance.
+        optimizer (torch.optim.Optimizer): The optimizer for training the model.
+        loss (Tacotron2Loss): Loss function for training the model.
+        scheduler (torch.optim.lr_scheduler._LRScheduler): Learning rate scheduler.
+        console_logger (logging.Logger, optional): Logger for outputting messages to the console.
+        iteration (int): Current training iteration.
+        is_checkpoint (bool): Flag indicating if a checkpoint is loaded.
+    """
+
     def __init__(self, rank, input_args, hparams):
         self.rank = rank
         self.input_args = input_args
@@ -72,10 +91,25 @@ class Tacotron2Trainer:
         self._create_scheduler(self.input_args.ckpt_path)
 
     def _log_to_console(self, logtext):
+        """
+        Logs messages to the console if the process rank is 0. This ensures that only
+        one process outputs log messages in a multi-GPU setting.
+
+        Args:
+            logtext (str): The message to be logged.
+        """
         if self.rank == 0:
             self.console_logger.info(logtext)
 
     def _load_checkpoint(self, ckpt_path, device):
+        """
+        Loads a model checkpoint from the specified file path. Restores the model's state,
+        optimizer state, and sets the training iteration counter to the appropriate value.
+
+        Args:
+            ckpt_path (str): Path to the checkpoint file.
+            device (torch.device): The device on which to load the checkpoint.
+        """
         assert os.path.isfile(ckpt_path)
 
         self._log_to_console(f"Loading checkpoint {ckpt_path}")
@@ -87,6 +121,15 @@ class Tacotron2Trainer:
         self.iteration = ckpt_dict["iteration"] + 1
 
     def _save_checkpoint(self, ckpt_path, num_gpus):
+        """
+        Saves the current state of the model and optimizer to a checkpoint file. This
+        method is called periodically during training to ensure that training progress
+        can be resumed in case of interruption.
+
+        Args:
+            ckpt_path (str): Path to save the checkpoint file.
+            num_gpus (int): Number of GPUs being used in training.
+        """
         torch.save(
             dict(
                 Tacotron2=(
@@ -99,6 +142,13 @@ class Tacotron2Trainer:
         )
 
     def _create_scheduler(self, ckpt_path):
+        """
+        Creates and configures a learning rate scheduler based on the specified hyperparameters.
+        If a checkpoint path is provided, the scheduler's last epoch is set accordingly.
+
+        Args:
+            ckpt_path (str): Path to a checkpoint file to continue training from.
+        """
         lr_lambda = lambda step: self.hparams.sch_step**0.5 * min(
             (step + 1) * self.hparams.sch_step**-1.5, (step + 1) ** -0.5
         )
@@ -113,17 +163,37 @@ class Tacotron2Trainer:
             )
 
     def map_array_to_gpu(self, array):
+        """
+        Maps an array of tensors to the GPU device assigned to the current process. This method
+        ensures that all tensor operations during training are performed on the appropriate device.
+
+        Args:
+            array (iterable): An iterable (e.g., list or tuple) containing tensors or other items.
+
+        Returns:
+            iterable: The input iterable with all tensors moved to the GPU.
+        """
         return map(
             lambda item: item.to(self.device) if torch.is_tensor(item) else item, array
         )
 
     def train(self):
+        """
+        Manages the main training loop for the Tacotron2 model. This method includes data loading,
+        forward pass, loss computation, backpropagation, gradient clipping, optimizer step,
+        learning rate scheduling, logging, checkpointing, and inference sampling. The training
+        process continues until the maximum number of iterations specified in the hyperparameters
+        is reached.
+        """
+
+        # Create data loader for the training dataset
         self.train_loader = Tacotron2Dataset.dataloader_factory(
             metadata_path=self.input_args.metadata_path,
             wavs_dir=self.input_args.wavs_dir,
             num_gpus=self.hparams.num_gpus,
         )
 
+        # Setup logging and checkpoint directories if this is the master process
         if self.rank == 0:
             if self.input_args.logdir != "":
                 if not os.path.isdir(self.input_args.logdir):
@@ -137,6 +207,7 @@ class Tacotron2Trainer:
                 os.makedirs(self.input_args.ckpt_dir)
                 os.chmod(self.input_args.ckpt_dir, 0o775)
 
+        # Set the model to training mode
         self.Tacotron2.train()
 
         epoch = 0
@@ -146,15 +217,19 @@ class Tacotron2Trainer:
 
             for batch in self.train_loader:
                 start = time.perf_counter()
+
+                # Parse the batch
                 x, y = (
                     self.Tacotron2.module.parse_batch(batch, self.device)
                     if self.hparams.num_gpus > 1
                     else self.Tacotron2.parse_batch(batch, self.device)
                 )
 
+                # Move data to the GPU
                 x = self.map_array_to_gpu(x)
                 y = self.map_array_to_gpu(y)
 
+                # Perform forward pass
                 y_pred = self.Tacotron2(x)
 
                 loss, items = self.loss(y_pred, y)
@@ -162,7 +237,7 @@ class Tacotron2Trainer:
                 # zero grad
                 self.optimizer.zero_grad()
 
-                # backward, grad_norm, and update
+                # Backpropagate, clip gradients, and update weights
                 loss.backward()
 
                 grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -219,6 +294,19 @@ class Tacotron2Trainer:
 
 
 def multiprocessing_wrapper(rank, input_args, hparams):
+    """
+    Wrapper function for initializing Tacotron2Trainer and starting the training process.
+    This function is intended to be used with torch.multiprocessing for distributed training
+    across multiple GPUs.
+
+    Args:
+        rank (int): Rank of the current process in the distributed setup.
+        input_args (argparse.Namespace): Command line arguments including data paths and configurations.
+        hparams (Tacotron2HParams): Hyperparameters for configuring the Tacotron2 model.
+    
+    Example:
+        mp.spawn(multiprocessing_wrapper, nprocs=num_gpus, args=(args, hparams))
+    """
     trainer = Tacotron2Trainer(rank=rank, input_args=input_args, hparams=hparams)
     trainer.train()
 

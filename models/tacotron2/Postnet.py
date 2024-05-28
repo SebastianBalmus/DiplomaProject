@@ -40,7 +40,7 @@ class Postnet(torch.nn.Module):
             )
         )
 
-        for i in range(1, hps.postnet_n_convolutions - 1):
+        for _ in range(1, hps.postnet_n_convolutions - 1):
             self.convolutions.append(
                 torch.nn.Sequential(
                     ConvNorm(
