@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn import Conv1d
 from torch.nn.utils import weight_norm, spectral_norm
-from hparams.HiFiGanHParams import HiFiHanHParams as hps
+from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class DiscriminatorS(torch.nn.Module):

@@ -1,7 +1,7 @@
 import matplotlib
 import matplotlib.pylab as plt
 from torch.utils.tensorboard import SummaryWriter
-from hparams.HiFiGanHParams import HiFiHanHParams as hps
+from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 matplotlib.use("Agg")
@@ -11,7 +11,7 @@ class HiFiGanLogger(SummaryWriter):
     def __init__(self, logdir):
         super(HiFiGanLogger, self).__init__(logdir, flush_secs=5)
 
-    def _plot_spectrogram(spectrogram):
+    def _plot_spectrogram(self, spectrogram):
         fig, ax = plt.subplots(figsize=(10, 2))
         im = ax.imshow(spectrogram, aspect="auto", origin="lower", interpolation="none")
         plt.colorbar(im, ax=ax)

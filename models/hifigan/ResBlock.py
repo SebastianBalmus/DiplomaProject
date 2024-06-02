@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn import Conv1d
 from torch.nn.utils import weight_norm, remove_weight_norm
 from utils.util import init_weights, get_padding
-from hparams.HiFiGanHParams import HiFiHanHParams as hps
+from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class ResBlock(torch.nn.Module):

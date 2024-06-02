@@ -30,8 +30,6 @@ class HiFiGanDataset:
         fine_tuning=False,
         base_mels_path=None,
     ):
-        self.mel_basis = {}
-        self.hann_window = {}
         self.audio_files = training_files
         random.seed(1234)
 
@@ -54,22 +52,22 @@ class HiFiGanDataset:
         self.fine_tuning = fine_tuning
         self.base_mels_path = base_mels_path
 
-    def _load_wav(self, full_path):
+    @staticmethod
+    def _load_wav(full_path):
         sampling_rate, data = read(full_path)
         return data, sampling_rate
 
-    def _dynamic_range_compression_torch(self, x, C=1, clip_val=1e-5):
+    @staticmethod
+    def _dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
         return torch.log(torch.clamp(x, min=clip_val) * C)
 
-    def _dynamic_range_decompression_torch(self, x, C=1):
-        return torch.exp(x) / C
-
-    def _spectral_normalize_torch(self, magnitudes):
-        output = self._dynamic_range_compression_torch(magnitudes)
+    @staticmethod
+    def _spectral_normalize_torch(magnitudes):
+        output = HiFiGanDataset._dynamic_range_compression_torch(magnitudes)
         return output
 
+    @staticmethod
     def mel_spectrogram(
-        self,
         y,
         n_fft,
         num_mels,
@@ -80,17 +78,19 @@ class HiFiGanDataset:
         fmax,
         center=False,
     ):
+        mel_basis = {}
+        hann_window = {}
         if torch.min(y) < -1.0:
             print("min value is ", torch.min(y))
         if torch.max(y) > 1.0:
             print("max value is ", torch.max(y))
 
-        if fmax not in self.mel_basis:
+        if fmax not in mel_basis:
             mel = librosa_mel_fn(sampling_rate, n_fft, num_mels, fmin, fmax)
-            self.mel_basis[str(fmax) + "_" + str(y.device)] = (
+            mel_basis[str(fmax) + "_" + str(y.device)] = (
                 torch.from_numpy(mel).float().to(y.device)
             )
-            self.hann_window[str(y.device)] = torch.hann_window(win_size).to(y.device)
+            hann_window[str(y.device)] = torch.hann_window(win_size).to(y.device)
 
         y = torch.nn.functional.pad(
             y.unsqueeze(1),
@@ -104,7 +104,7 @@ class HiFiGanDataset:
             n_fft,
             hop_length=hop_size,
             win_length=win_size,
-            window=self.hann_window[str(y.device)],
+            window=hann_window[str(y.device)],
             center=center,
             pad_mode="reflect",
             normalized=False,
@@ -113,13 +113,14 @@ class HiFiGanDataset:
 
         spec = torch.sqrt(spec.pow(2).sum(-1) + (1e-9))
 
-        spec = torch.matmul(self.mel_basis[str(fmax) + "_" + str(y.device)], spec)
-        spec = self._spectral_normalize_torch(spec)
+        spec = torch.matmul(mel_basis[str(fmax) + "_" + str(y.device)], spec)
+        spec = HiFiGanDataset._spectral_normalize_torch(spec)
 
         return spec
 
+    @staticmethod
     def get_dataset_filelist(
-        self, input_training_file, input_wavs_dir, input_validation_file
+        input_training_file, input_wavs_dir, input_validation_file
     ):
         with open(input_training_file, "r", encoding="utf-8") as fi:
             training_files = [
@@ -139,7 +140,7 @@ class HiFiGanDataset:
     def __getitem__(self, index):
         filename = self.audio_files[index]
         if self._cache_ref_count == 0:
-            audio, sampling_rate = self._load_wav(filename)
+            audio, sampling_rate = HiFiGanDataset._load_wav(filename)
             audio = audio / hps.max_wav_value
             if not self.fine_tuning:
                 audio = normalize(audio) * 0.95
@@ -169,7 +170,7 @@ class HiFiGanDataset:
                         audio, (0, self.segment_size - audio.size(1)), "constant"
                     )
 
-            mel = self.mel_spectrogram(
+            mel = HiFiGanDataset.mel_spectrogram(
                 audio,
                 self.n_fft,
                 self.num_mels,
@@ -212,7 +213,7 @@ class HiFiGanDataset:
                         audio, (0, self.segment_size - audio.size(1)), "constant"
                     )
 
-        mel_loss = self.mel_spectrogram(
+        mel_loss = HiFiGanDataset.mel_spectrogram(
             audio,
             self.n_fft,
             self.num_mels,

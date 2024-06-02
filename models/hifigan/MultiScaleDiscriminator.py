@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import AvgPool1d
-from DiscriminatorS import DiscriminatorS
+from .DiscriminatorS import DiscriminatorS
 
 
 class MultiScaleDiscriminator(torch.nn.Module):

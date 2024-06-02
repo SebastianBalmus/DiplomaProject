@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from DiscriminatorP import DiscriminatorP
+from .DiscriminatorP import DiscriminatorP
 
 
 class MultiPeriodDiscriminator(torch.nn.Module):

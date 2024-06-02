@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn import Conv2d
 from torch.nn.utils import weight_norm, spectral_norm
 from utils.util import get_padding
-from hparams.HiFiGanHParams import HiFiHanHParams as hps
+from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class DiscriminatorP(torch.nn.Module):

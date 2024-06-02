@@ -48,8 +48,8 @@ class HiFiGanTrainer:
         self.device = torch.device("cuda", self.rank)
 
         self.generator = Generator(self.hparams).to(self.device)
-        self.mpd = MultiPeriodDiscriminator(self.hparams).to(self.device)
-        self.msd = MultiScaleDiscriminator(self.hparams).to(self.device)
+        self.mpd = MultiPeriodDiscriminator().to(self.device)
+        self.msd = MultiScaleDiscriminator().to(self.device)
 
         self._log_to_console(self.generator)
         self._log_to_console(f"Checkpoints directory: {self.input_args.ckpt_dir}")
@@ -201,6 +201,8 @@ class HiFiGanTrainer:
         self.mpd.train()
         self.msd.train()
 
+        self.steps = 1
+
         for epoch in range(max(0, self.last_epoch), self.hparams.training_epochs):
             if self.rank == 0:
                 start = time.time()
@@ -224,14 +226,14 @@ class HiFiGanTrainer:
 
                 y_g_hat = self.generator(x)
                 y_g_hat_mel = HiFiGanDataset.mel_spectrogram(
-                    y_g_hat.squeeze(1),
-                    self.hparams.n_fft,
-                    self.hparams.num_mels,
-                    self.hparams.sampling_rate,
-                    self.hparams.hop_size,
-                    self.hparams.win_size,
-                    self.hparams.fmin,
-                    self.hparams.fmax_for_loss,
+                    y=y_g_hat.squeeze(1),
+                    n_fft=self.hparams.n_fft,
+                    num_mels=self.hparams.num_mels,
+                    sampling_rate=self.hparams.sampling_rate,
+                    hop_size=self.hparams.hop_size,
+                    win_size=self.hparams.win_size,
+                    fmin=self.hparams.fmin,
+                    fmax=self.hparams.fmax_for_loss,
                 )
 
                 self.optim_d.zero_grad()
@@ -357,7 +359,7 @@ class HiFiGanTrainer:
 
                         self.generator.train()
 
-                steps += 1
+                self.steps += 1
 
             self.scheduler_g.step()
             self.scheduler_d.step()

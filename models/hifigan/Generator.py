@@ -3,9 +3,9 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.nn import Conv1d, ConvTranspose1d
 from torch.nn.utils import weight_norm, remove_weight_norm
-from ResBlock import ResBlock
+from .ResBlock import ResBlock
 from utils.util import init_weights
-from hparams.HiFiGanHParams import HiFiHanHParams as hps
+from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class Generator(torch.nn.Module):
@@ -17,7 +17,6 @@ class Generator(torch.nn.Module):
         self.conv_pre = weight_norm(
             Conv1d(80, h.upsample_initial_channel, 7, 1, padding=3)
         )
-        resblock = ResBlock
 
         self.ups = nn.ModuleList()
         for i, (u, k) in enumerate(zip(h.upsample_rates, h.upsample_kernel_sizes)):
@@ -39,7 +38,7 @@ class Generator(torch.nn.Module):
             for j, (k, d) in enumerate(
                 zip(h.resblock_kernel_sizes, h.resblock_dilation_sizes)
             ):
-                self.resblocks.append(resblock(h, ch, k, d))
+                self.resblocks.append(ResBlock(h, ch, k, d))
 
         self.conv_post = weight_norm(Conv1d(ch, 1, 7, 1, padding=3))
         self.ups.apply(init_weights)
