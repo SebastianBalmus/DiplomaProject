@@ -1,7 +1,6 @@
 import os
 import logging
 import torch
-from utils.audio import load_wav
 from dataset.HiFiGanDataset import HiFiGanDataset
 from hparams.HiFiGanHParams import HiFiGanHParams as hps
 from models.hifigan.Generator import Generator
