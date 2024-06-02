@@ -1,4 +1,5 @@
 import warnings
+
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 import itertools
@@ -377,18 +378,54 @@ def multiprocessing_wrapper(rank, input_args, hparams):
     trainer = HiFiGanTrainer(rank=rank, input_args=input_args, hparams=hparams)
     trainer.train()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-w', '--input_wavs_dir', type=str, help="Directory where the .wav files are saved")
-    parser.add_argument('-m', '--input_mels_dir', type=str, help='Directory where the mel spectrograms are saved')
-    parser.add_argument('-t', '--input_training_file', type=str, help='Training metadata.csv file')
-    parser.add_argument('-v', '--input_validation_file', type=str, help='Validation metadata.csv file')
-    parser.add_argument('-cd', '--ckpt_dir', type=str, help='In what directory to save checkpoints')
-    parser.add_argument('--ckpt_path_generator', type=str, default="", help="Generator checkpoint path")
-    parser.add_argument('--ckpt_path_discriminator', type=str, default="", help="Discriminator checkpoint path")
-    parser.add_argument('-l', '--logdir', type=str, default="", help="Directory where tensorboard logs are saved")
-    parser.add_argument('--fine_tuning', type=bool, default=False, help="Fine tune an existing or start from scratch")
+    parser.add_argument(
+        "-w",
+        "--input_wavs_dir",
+        type=str,
+        help="Directory where the .wav files are saved",
+    )
+    parser.add_argument(
+        "-m",
+        "--input_mels_dir",
+        type=str,
+        default="",
+        help="Directory where the mel spectrograms are saved",
+    )
+    parser.add_argument(
+        "-t", "--input_training_file", type=str, help="Training metadata.csv file"
+    )
+    parser.add_argument(
+        "-v", "--input_validation_file", type=str, help="Validation metadata.csv file"
+    )
+    parser.add_argument(
+        "-cd", "--ckpt_dir", type=str, help="In what directory to save checkpoints"
+    )
+    parser.add_argument(
+        "--ckpt_path_generator", type=str, default="", help="Generator checkpoint path"
+    )
+    parser.add_argument(
+        "--ckpt_path_discriminator",
+        type=str,
+        default="",
+        help="Discriminator checkpoint path",
+    )
+    parser.add_argument(
+        "-l",
+        "--logdir",
+        type=str,
+        default="",
+        help="Directory where tensorboard logs are saved",
+    )
+    parser.add_argument(
+        "--fine_tuning",
+        type=bool,
+        default=False,
+        help="Fine tune an existing or start from scratch",
+    )
 
     args = parser.parse_args()
     hparams = hps
