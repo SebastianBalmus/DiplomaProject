@@ -4,6 +4,14 @@ from .DiscriminatorP import DiscriminatorP
 
 
 class MultiPeriodDiscriminator(torch.nn.Module):
+    """
+    Multi-period discriminator module for HiFi-GAN. This module contains multiple
+    periodic discriminators, each operating on different periods.
+
+    Attributes:
+        discriminators (torch.nn.ModuleList): List of periodic discriminators.
+    """
+
     def __init__(self):
         super(MultiPeriodDiscriminator, self).__init__()
         self.discriminators = nn.ModuleList(
@@ -17,6 +25,16 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         )
 
     def forward(self, y, y_hat):
+        """
+        Forward pass of the multi-period discriminator.
+
+        Args:
+            y (torch.Tensor): Real audio tensor.
+            y_hat (torch.Tensor): Generated audio tensor.
+
+        Returns:
+            tuple: A tuple containing the outputs and feature maps from the real and generated audio.
+        """
         y_d_rs = []
         y_d_gs = []
         fmap_rs = []

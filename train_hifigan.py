@@ -1,12 +1,7 @@
-import warnings
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
-
 import itertools
 import os
 import time
 import argparse
-import json
 import logging
 import torch
 import torch.nn.functional as F
@@ -27,6 +22,32 @@ torch.backends.cudnn.benchmark = True
 
 
 class HiFiGanTrainer:
+    """
+    The HiFiGanTrainer class is responsible for managing the training process
+    of the HiFiGAN model. This class handles model initialization, training loop,
+    checkpointing, logging, and distributed training setup.
+
+    Args:
+        rank (int): Rank of the current process for distributed training.
+        input_args (argparse.Namespace): Command line arguments for configuration.
+        hparams (HiFiGanHParams): Hyperparameters for configuring the HiFiGAN model.
+
+    Attributes:
+        rank (int): Rank of the current process for distributed training.
+        input_args (argparse.Namespace): Command line arguments for configuration.
+        hparams (HiFiGanHParams): Hyperparameters for configuring the HiFiGAN model.
+        device (torch.device): The CUDA device assigned to the current process.
+        generator (Generator): The Generator model instance.
+        mpd (MultiPeriodDiscriminator): The MultiPeriodDiscriminator model instance.
+        msd (MultiScaleDiscriminator): The MultiScaleDiscriminator model instance.
+        optim_g (torch.optim.Optimizer): The optimizer for the generator model.
+        optim_d (torch.optim.Optimizer): The optimizer for the discriminator model.
+        scheduler_g (torch.optim.lr_scheduler._LRScheduler): Learning rate scheduler for the generator.
+        scheduler_d (torch.optim.lr_scheduler._LRScheduler): Learning rate scheduler for the discriminator.
+        console_logger (logging.Logger, optional): Logger for outputting messages to the console.
+        last_epoch (int): Last epoch during training.
+    """
+
     def __init__(self, rank, input_args, hparams):
         self.rank = rank
         self.input_args = input_args
@@ -107,6 +128,15 @@ class HiFiGanTrainer:
             self.console_logger.info(logtext)
 
     def _load_checkpoint(self, ckpt_path_generator, ckpt_path_discriminator, device):
+        """
+        Loads a model checkpoint from the specified file paths for the generator and discriminator.
+        Restores the models' states, optimizer states, and sets the training epoch to the appropriate value.
+
+        Args:
+            ckpt_path_generator (str): Path to the generator checkpoint file.
+            ckpt_path_discriminator (str): Path to the discriminator checkpoint file.
+            device (torch.device): The device on which to load the checkpoints.
+        """
         assert os.path.isfile(ckpt_path_generator)
         assert os.path.isfile(ckpt_path_discriminator)
 
@@ -131,6 +161,15 @@ class HiFiGanTrainer:
         self.last_epoch = ckpt_dict_discriminator["epoch"]
 
     def _save_checkpoint(self, ckpt_path_generator, ckpt_path_discriminator, epoch):
+        """
+        Saves the current state of the generator and discriminator models, along with their optimizers,
+        to checkpoint files. This method is called periodically during training to save progress.
+
+        Args:
+            ckpt_path_generator (str): Path to save the generator checkpoint file.
+            ckpt_path_discriminator (str): Path to save the discriminator checkpoint file.
+            epoch (int): The current training epoch.
+        """
         torch.save(
             {
                 "generator": (
@@ -158,6 +197,12 @@ class HiFiGanTrainer:
         )
 
     def train(self):
+        """
+        Manages the main training loop for the HiFiGAN model. This method includes data loading,
+        forward pass, loss computation, backpropagation, optimizer steps, learning rate scheduling,
+        logging, checkpointing, and validation. The training process continues until the maximum
+        number of epochs specified in the hyperparameters is reached.
+        """
         # Setup logging and checkpoint directories if this is the master process
         if self.rank == 0:
             if self.input_args.logdir != "":
@@ -172,12 +217,14 @@ class HiFiGanTrainer:
                 os.makedirs(self.input_args.ckpt_dir)
                 os.chmod(self.input_args.ckpt_dir, 0o775)
 
+        # Getting training and validation file lists
         training_filelist, validation_filelist = HiFiGanDataset.get_dataset_filelist(
             input_training_file=self.input_args.input_training_file,
             input_validation_file=self.input_args.input_validation_file,
             input_wavs_dir=self.input_args.input_wavs_dir,
         )
 
+        # Creating data loaders
         self.train_loader = HiFiGanDataset.dataloader_factory(
             filelist=training_filelist,
             device=self.device,
@@ -197,6 +244,7 @@ class HiFiGanTrainer:
                 validation=True,
             )
 
+        # Set models to training mode
         self.generator.train()
         self.mpd.train()
         self.msd.train()
@@ -211,7 +259,7 @@ class HiFiGanTrainer:
             if self.hparams.num_gpus > 1:
                 self.train_loader.sampler.set_epoch(epoch)
 
-            for i, batch in enumerate(self.train_loader):
+            for _, batch in enumerate(self.train_loader):
                 if self.rank == 0:
                     start_b = time.time()
 
@@ -377,6 +425,19 @@ class HiFiGanTrainer:
 
 
 def multiprocessing_wrapper(rank, input_args, hparams):
+    """
+    Wrapper function for initializing HiFiGanTrainer and starting the training process.
+    This function is intended to be used with torch.multiprocessing for distributed training
+    across multiple GPUs.
+
+    Args:
+        rank (int): Rank of the current process in the distributed setup.
+        input_args (argparse.Namespace): Command line arguments including data paths and configurations.
+        hparams (HiFiGanHParams): Hyperparameters for configuring the HiFiGan model.
+
+    Example:
+        mp.spawn(multiprocessing_wrapper, nprocs=num_gpus, args=(args, hparams))
+    """
     trainer = HiFiGanTrainer(rank=rank, input_args=input_args, hparams=hparams)
     trainer.train()
 

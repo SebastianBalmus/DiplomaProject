@@ -8,6 +8,16 @@ from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class DiscriminatorP(torch.nn.Module):
+    """
+    Periodic discriminator module for HiFi-GAN. This discriminator operates on
+    periodic input sequences to determine the realism of generated audio.
+
+    Attributes:
+        period (int): The period over which the input is reshaped.
+        convs (torch.nn.ModuleList): Convolutional layers of the discriminator.
+        conv_post (torch.nn.Conv2d): Final convolutional layer.
+    """
+
     def __init__(self, period, kernel_size=5, stride=3, use_spectral_norm=False):
         super(DiscriminatorP, self).__init__()
         self.period = period
@@ -56,6 +66,15 @@ class DiscriminatorP(torch.nn.Module):
         self.conv_post = norm_f(Conv2d(1024, 1, (3, 1), 1, padding=(1, 0)))
 
     def forward(self, x):
+        """
+        Forward pass of the periodic discriminator.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, channels, timesteps).
+
+        Returns:
+            tuple: A tuple containing the output tensor and feature maps.
+        """
         fmap = []
 
         # 1d to 2d

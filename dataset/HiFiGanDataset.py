@@ -11,6 +11,29 @@ from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class HiFiGanDataset:
+    """
+    Dataset class for HiFi-GAN model. It handles loading, processing, and
+    augmentation of audio data for training and evaluation.
+
+    Attributes:
+        audio_files (list): List of paths to audio files.
+        segment_size (int): Size of the audio segments to be used.
+        sampling_rate (int): Sampling rate of the audio data.
+        split (bool): Whether to split the audio into segments.
+        n_fft (int): Number of FFT components.
+        num_mels (int): Number of Mel bands.
+        hop_size (int): Hop size for STFT.
+        win_size (int): Window size for STFT.
+        fmin (int): Minimum frequency for Mel filterbank.
+        fmax (int): Maximum frequency for Mel filterbank.
+        fmax_loss (int, optional): Maximum frequency for Mel filterbank used in loss calculation.
+        cached_wav (numpy array): Cached waveform data.
+        n_cache_reuse (int): Number of times to reuse the cached waveform.
+        device (torch.device): Device to perform operations on.
+        fine_tuning (bool): Whether the dataset is used for fine-tuning.
+        base_mels_path (str): Base path for Mel spectrograms when fine-tuning.
+    """
+
     def __init__(
         self,
         training_files,
@@ -54,15 +77,44 @@ class HiFiGanDataset:
 
     @staticmethod
     def _load_wav(full_path):
+        """
+        Load a WAV file.
+
+        Args:
+            full_path (str): Path to the WAV file.
+
+        Returns:
+            tuple: A tuple containing the audio data and the sampling rate.
+        """
         sampling_rate, data = read(full_path)
         return data, sampling_rate
 
     @staticmethod
     def _dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
+        """
+        Apply dynamic range compression to a tensor.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            C (float): Compression factor.
+            clip_val (float): Clipping value.
+
+        Returns:
+            torch.Tensor: Compressed tensor.
+        """
         return torch.log(torch.clamp(x, min=clip_val) * C)
 
     @staticmethod
     def _spectral_normalize_torch(magnitudes):
+        """
+        Apply spectral normalization to magnitudes.
+
+        Args:
+            magnitudes (torch.Tensor): Magnitudes to normalize.
+
+        Returns:
+            torch.Tensor: Normalized magnitudes.
+        """
         output = HiFiGanDataset._dynamic_range_compression_torch(magnitudes)
         return output
 
@@ -78,6 +130,23 @@ class HiFiGanDataset:
         fmax,
         center=False,
     ):
+        """
+        Compute the Mel spectrogram of an audio signal.
+
+        Args:
+            y (torch.Tensor): Input audio signal.
+            n_fft (int): Number of FFT components.
+            num_mels (int): Number of Mel bands.
+            sampling_rate (int): Sampling rate of the audio.
+            hop_size (int): Hop size for STFT.
+            win_size (int): Window size for STFT.
+            fmin (int): Minimum frequency for Mel filterbank.
+            fmax (int): Maximum frequency for Mel filterbank.
+            center (bool): Whether to pad the input so that the t-th frame is centered at y[t * hop_length].
+
+        Returns:
+            torch.Tensor: Mel spectrogram.
+        """
         mel_basis = {}
         hann_window = {}
         if torch.min(y) < -1.0:
@@ -122,6 +191,18 @@ class HiFiGanDataset:
     def get_dataset_filelist(
         input_training_file, input_wavs_dir, input_validation_file
     ):
+        """
+        Generate file lists for training and validation datasets.
+
+        Args:
+            input_training_file (str): Path to the file listing the training files.
+            input_wavs_dir (str): Directory containing the WAV files.
+            input_validation_file (str): Path to the file listing the validation files.
+
+        Returns:
+            tuple: A tuple containing two lists: training files and validation files.
+        """
+
         with open(input_training_file, "r", encoding="utf-8") as fi:
             training_files = [
                 os.path.join(input_wavs_dir, x.split("|")[0] + ".wav")
@@ -138,6 +219,15 @@ class HiFiGanDataset:
         return training_files, validation_files
 
     def __getitem__(self, index):
+        """
+        Get an item from the dataset.
+
+        Args:
+            index (int): Index of the item to get.
+
+        Returns:
+            tuple: A tuple containing the Mel spectrogram, audio, filename, and Mel spectrogram for loss calculation.
+        """
         filename = self.audio_files[index]
         if self._cache_ref_count == 0:
             audio, sampling_rate = HiFiGanDataset._load_wav(filename)
@@ -228,12 +318,32 @@ class HiFiGanDataset:
         return (mel.squeeze(), audio.squeeze(0), filename, mel_loss.squeeze())
 
     def __len__(self):
+        """
+        Get the length of the dataset.
+
+        Returns:
+            int: Length of the dataset.
+        """
         return len(self.audio_files)
 
     @staticmethod
     def dataloader_factory(
         filelist, device, fine_tuning, input_mels_dir, num_gpus, validation=False
     ):
+        """
+        Factory method to create a DataLoader for the dataset.
+
+        Args:
+            filelist (list): List of files to include in the dataset.
+            device (torch.device): Device to perform operations on.
+            fine_tuning (bool): Whether the dataset is used for fine-tuning.
+            input_mels_dir (str): Directory containing Mel spectrograms.
+            num_gpus (int): Number of GPUs to use.
+            validation (bool): Whether the DataLoader is for validation.
+
+        Returns:
+            torch.utils.data.DataLoader: DataLoader for the dataset.
+        """
         dataset = HiFiGanDataset(
             filelist,
             hps.segment_size,

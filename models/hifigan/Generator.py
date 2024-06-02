@@ -9,6 +9,18 @@ from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class Generator(torch.nn.Module):
+    """
+    HiFi-GAN generator module. This module generates audio waveforms from mel-spectrograms
+    using a series of upsampling and residual blocks.
+
+    Attributes:
+        h (HiFiGanHParams): Hyperparameters for the generator.
+        conv_pre (torch.nn.Conv1d): Initial convolutional layer.
+        ups (torch.nn.ModuleList): List of upsampling convolutional layers.
+        resblocks (torch.nn.ModuleList): List of residual blocks.
+        conv_post (torch.nn.Conv1d): Final convolutional layer.
+    """
+
     def __init__(self, h):
         super(Generator, self).__init__()
         self.h = h
@@ -45,6 +57,15 @@ class Generator(torch.nn.Module):
         self.conv_post.apply(init_weights)
 
     def forward(self, x):
+        """
+        Forward pass of the generator.
+
+        Args:
+            x (torch.Tensor): Input tensor of mel-spectrograms.
+
+        Returns:
+            torch.Tensor: Generated audio waveform.
+        """
         x = self.conv_pre(x)
         for i in range(self.num_upsamples):
             x = F.leaky_relu(x, hps.lrelu_slope)
@@ -63,6 +84,9 @@ class Generator(torch.nn.Module):
         return x
 
     def remove_weight_norm(self):
+        """
+        Remove weight normalization from all layers of the generator.
+        """
         print("Removing weight norm...")
         for l in self.ups:
             remove_weight_norm(l)

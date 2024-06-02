@@ -8,6 +8,17 @@ from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class ResBlock(torch.nn.Module):
+    """
+    Residual Block for HiFi-GAN Generator. This block contains a series of
+    convolutional layers with different dilation rates to capture various
+    receptive fields.
+
+    Attributes:
+        h (HiFiGanHParams): Hyperparameters for the generator.
+        convs1 (torch.nn.ModuleList): List of dilated convolutional layers.
+        convs2 (torch.nn.ModuleList): List of convolutional layers with dilation rate of 1.
+    """
+
     def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5)):
         super(ResBlock, self).__init__()
         self.h = h
@@ -84,6 +95,15 @@ class ResBlock(torch.nn.Module):
         self.convs2.apply(init_weights)
 
     def forward(self, x):
+        """
+        Forward pass of the residual block.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor after passing through the residual block.
+        """
         for c1, c2 in zip(self.convs1, self.convs2):
             xt = F.leaky_relu(x, hps.lrelu_slope)
             xt = c1(xt)
@@ -93,6 +113,9 @@ class ResBlock(torch.nn.Module):
         return x
 
     def remove_weight_norm(self):
+        """
+        Remove weight normalization from all convolutional layers in the block.
+        """
         for l in self.convs1:
             remove_weight_norm(l)
         for l in self.convs2:

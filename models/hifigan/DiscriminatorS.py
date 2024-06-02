@@ -7,6 +7,15 @@ from hparams.HiFiGanHParams import HiFiGanHParams as hps
 
 
 class DiscriminatorS(torch.nn.Module):
+    """
+    Spectral discriminator module for HiFi-GAN. This discriminator operates on the
+    spectral representation of the input audio.
+
+    Attributes:
+        convs (torch.nn.ModuleList): Convolutional layers of the discriminator.
+        conv_post (torch.nn.Conv1d): Final convolutional layer.
+    """
+
     def __init__(self, use_spectral_norm=False):
         super(DiscriminatorS, self).__init__()
         norm_f = weight_norm if use_spectral_norm == False else spectral_norm
@@ -24,6 +33,15 @@ class DiscriminatorS(torch.nn.Module):
         self.conv_post = norm_f(Conv1d(1024, 1, 3, 1, padding=1))
 
     def forward(self, x):
+        """
+        Forward pass of the spectral discriminator.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, channels, timesteps).
+
+        Returns:
+            tuple: A tuple containing the output tensor and feature maps.
+        """
         fmap = []
         for l in self.convs:
             x = l(x)
