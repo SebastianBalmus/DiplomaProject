@@ -43,45 +43,11 @@ class HiFiGanInferenceHandler:
         logger.info(f"Loading checkpoint: {ckpt_pth}")
 
         ckpt_dict = torch.load(ckpt_pth, map_location=self.device)
-        self.generator = Generator().to(self.device)
+        self.generator = Generator(hps).to(self.device)
         self.generator.load_state_dict(ckpt_dict["generator"])
         self.generator.eval()
 
-    def infer(self, wav):
-        """
-        Convert a wav file to a mel spectrogram and
-        convert it back to wav using the generator.
-
-        Args:
-            wav (numpy.array or torch.Tensor): Input Wav file.
-
-        Returns:
-            tuple: A tuple containing the generated audio and the sampling rate.
-        """
-        self.generator.remove_weight_norm()
-
-        wav = wav / hps.max_wav_value
-        wav = torch.FloatTensor(wav).to(self.device)
-        x = HiFiGanDataset.mel_spectrogram(
-            wav.unsqueeze(0),
-            n_fft=hps.n_fft,
-            num_mels=hps.num_mels,
-            sampling_rate=hps.sampling_rate,
-            hop_size=hps.hop_size,
-            win_size=hps.win_size,
-            fmin=hps.fmin,
-            fmax=hps.fmax_for_loss,
-        )
-
-        y_g_hat = self.generator(x)
-
-        audio = y_g_hat.squeeze()
-        audio = audio * hps.max_wav_value
-        audio = audio.cpu().numpy().astype("int16")
-
-        return (x, audio, hps.sampling_rate)
-
-    def infer_e2e(self, mel):
+    def infer(self, mel):
         """
         Perform inference to generate audio from a Mel spectrogram.
 
