@@ -63,7 +63,6 @@ class Tacotron2Trainer:
         self.Tacotron2 = Tacotron2().to(self.device)
 
         self._log_to_console(self.Tacotron2)
-        os.makedirs(self.input_args.ckpt_dir, exist_ok=True)
         self._log_to_console(f"Checkpoints directory: {self.input_args.ckpt_dir}")
 
         if self.hparams.num_gpus > 1:

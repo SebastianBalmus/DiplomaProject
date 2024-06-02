@@ -43,7 +43,7 @@ class Tacotron2InferenceHandler:
         """
         assert os.path.isfile(ckpt_pth)
         logger.info(f"Loading checkpoint: {ckpt_pth}")
-        ckpt_dict = torch.load(ckpt_pth)
+        ckpt_dict = torch.load(ckpt_pth, map_location=self.device)
         self.tacotron2 = Tacotron2()
         self.tacotron2.load_state_dict(ckpt_dict["Tacotron2"])
         self.tacotron2 = self.tacotron2.to(self.device)
