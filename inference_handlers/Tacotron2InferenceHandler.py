@@ -64,6 +64,23 @@ class Tacotron2InferenceHandler:
         mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
         return (mel_outputs, mel_outputs_postnet, alignments)
 
+    def infer_e2e(self, text):
+        """
+        Function used for end to end inference
+
+        Args:
+            text (str): Input text for inference.
+            model (Tacotron2): Tacotron2 model instance.
+            device (torch.device): Device for inference.
+
+        Returns:
+            tuple: Tuple containing mel spectrogram outputs, postnet mel spectrogram outputs, and alignments.
+        """
+        sequence = text_to_sequence(text, hps.text_cleaners)
+        sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
+        mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
+        return to_arr(mel_outputs_postnet)
+
     @staticmethod
     def static_infer(text, model, device):
         """

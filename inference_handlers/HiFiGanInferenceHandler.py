@@ -28,6 +28,7 @@ class HiFiGanInferenceHandler:
             self.device = torch.device("cpu")
 
         self._load_model(ckpt_pth)
+        self.generator.remove_weight_norm()
 
     def _load_model(self, ckpt_pth):
         """
@@ -57,7 +58,6 @@ class HiFiGanInferenceHandler:
         Returns:
             tuple: A tuple containing the generated audio and the sampling rate.
         """
-        self.generator.remove_weight_norm()
         audio = None
         with torch.no_grad():
             x = torch.FloatTensor(mel).to(self.device)
