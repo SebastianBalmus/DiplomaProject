@@ -11,6 +11,26 @@ logging.basicConfig(level=logging.INFO)
 
 
 def process_data(args):
+    """
+    Processes input data to generate and save mel-spectrograms using Tacotron2.
+
+    This function reads metadata, synthesizes speech for each text entry using 
+    teacher-forced inference with Tacotron2, and saves the resulting mel-spectrograms 
+    to the specified directory.
+
+    Args:
+        args (argparse.Namespace): Command-line arguments including:
+            - metadata_path (str): Path to the metadata CSV file containing text entries.
+            - save_dir (str): Directory where the generated mel-spectrograms will be saved.
+            - wavs_dir (str): Directory where the original waveform files are stored.
+
+    Side Effects:
+        - Creates the save directory if it doesn't exist.
+        - Reads text entries and corresponding waveform paths from the metadata CSV.
+        - Synthesizes mel-spectrograms using Tacotron2's teacher inference method.
+        - Saves the generated mel-spectrograms as .npy files in the save directory.
+        - Logs progress and file saving status.
+    """
     with open(args.metadata_path, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="|")
         data = list(reader)
@@ -21,8 +41,7 @@ def process_data(args):
         os.chmod(args.save_dir, 0o775)
 
     tacotron2 = Tacotron2InferenceHandler(
-        '/train_path/working_models/tacotron2_initial_training_modified',
-        use_cuda=True
+        "/train_path/working_models/tacotron2_initial_training_modified", use_cuda=True
     )
 
     for sentence in data:
@@ -54,10 +73,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-w",
-        "--wavs_dir",
-        type=str,
-        help="Where the original wavs are stored"
+        "-w", "--wavs_dir", type=str, help="Where the original wavs are stored"
     )
 
     args = parser.parse_args()

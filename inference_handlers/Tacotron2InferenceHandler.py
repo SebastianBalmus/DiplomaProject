@@ -31,10 +31,10 @@ class Tacotron2InferenceHandler:
     def __init__(self, ckpt_pth, use_cuda):
         if torch.cuda.is_available() and use_cuda is True:
             torch.cuda.manual_seed(hps.seed)
-            self.device = torch.device('cuda')
+            self.device = torch.device("cuda")
         else:
-            self.device = torch.device('cpu')
-            
+            self.device = torch.device("cpu")
+
         self._load_model(ckpt_pth)
 
     def _load_model(self, ckpt_pth):
@@ -61,7 +61,9 @@ class Tacotron2InferenceHandler:
         """
         sequence = text_to_sequence(text, hps.text_cleaners)
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
-        mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
+        mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(
+            sequence
+        )
         return (mel_outputs, mel_outputs_postnet, alignments)
 
     def infer_e2e(self, text):
@@ -78,7 +80,9 @@ class Tacotron2InferenceHandler:
         """
         sequence = text_to_sequence(text, hps.text_cleaners)
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
-        mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
+        _, mel_outputs_postnet, _, _ = self.tacotron2.inference(
+            sequence
+        )
         return to_arr(mel_outputs_postnet)
 
     def teacher_inference(self, wav_path, text):
@@ -86,7 +90,7 @@ class Tacotron2InferenceHandler:
         Perform teacher-forced inference using Tacotron2.
 
         This method generates mel-spectrograms from the input text and a reference
-        waveform using teacher forcing. It prepares the input text and mel-spectrogram 
+        waveform using teacher forcing. It prepares the input text and mel-spectrogram
         sequences, performs the Tacotron2 inference, and processes the output to handle
         sequence lengths.
 
@@ -103,7 +107,7 @@ class Tacotron2InferenceHandler:
         mel = melspectrogram(load_wav(wav_path))
         mel_in = torch.Tensor([mel]).to(self.device)
 
-        r = mel_in.shape[2]%hps.n_frames_per_step
+        r = mel_in.shape[2] % hps.n_frames_per_step
 
         if r != 0:
             mel_in = mel_in[:, :, :-r]
@@ -111,7 +115,9 @@ class Tacotron2InferenceHandler:
         sequence = torch.cat([sequence, sequence], 0)
         mel_in = torch.cat([mel_in, mel_in], 0)
 
-        _, mel_outputs_postnet, _, _ = self.tacotron2.teacher_inference(sequence, mel_in)
+        _, mel_outputs_postnet, _, _ = self.tacotron2.teacher_inference(
+            sequence, mel_in
+        )
 
         ret = mel
 
@@ -120,7 +126,6 @@ class Tacotron2InferenceHandler:
         else:
             ret = to_arr(mel_outputs_postnet[0])
         return ret
-
 
     @staticmethod
     def static_infer(text, model, device):
@@ -153,5 +158,3 @@ class Tacotron2InferenceHandler:
         _, mel_outputs_postnet, _ = output
         wav_postnet = inv_melspectrogram(to_arr(mel_outputs_postnet[0]))
         return wav_postnet
-
-
