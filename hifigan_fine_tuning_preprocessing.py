@@ -26,8 +26,11 @@ def process_data(args):
     )
 
     for sentence in data:
-        logger.info(f"Synthesising {sentence[0]}: {sentence[1]}")
-        mel = tacotron2.infer_e2e(sentence[1])
+        logger.info(f"Synthesising {sentence[0]}")
+
+        wav_path = os.path.join(args.wavs_dir, f"{sentence[0]}.wav")
+        mel = tacotron2.teacher_inference(wav_path, sentence[1])
+
         out_path = os.path.join(args.save_dir, f"{sentence[0]}.npy")
         np.save(out_path, mel)
         logger.info(f"Saved: {out_path}")
@@ -48,6 +51,13 @@ if __name__ == "__main__":
         "--save_dir",
         type=str,
         help="Where to save the mels",
+    )
+
+    parser.add_argument(
+        "-w",
+        "--wavs_dir",
+        type=str,
+        help="Where the original wavs are stored"
     )
 
     args = parser.parse_args()

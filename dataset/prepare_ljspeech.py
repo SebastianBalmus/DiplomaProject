@@ -4,7 +4,7 @@ import random
 import argparse
 
 
-def split_ljspeech(metadata_path, save_dir, validation_size=0.1, seed=88):
+def split_ljspeech(metadata_path, save_dir, validation_size=0.05, seed=88):
     """
     Splits the LJ Speech dataset metadata into train and validation sets.
 
@@ -30,7 +30,7 @@ def split_ljspeech(metadata_path, save_dir, validation_size=0.1, seed=88):
 
     # Shuffle the data to ensure random splitting
     random.seed(seed)
-    random.shuffle(seed)
+    random.shuffle(data)
 
     # Calculate the split index
     split_index = int(len(data) * (1 - validation_size))

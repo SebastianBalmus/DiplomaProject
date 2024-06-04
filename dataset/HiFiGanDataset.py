@@ -149,6 +149,7 @@ class HiFiGanDataset:
         """
         mel_basis = {}
         hann_window = {}
+
         if torch.min(y) < -1.0:
             print("min value is ", torch.min(y))
         if torch.max(y) > 1.0:
@@ -277,7 +278,7 @@ class HiFiGanDataset:
                     self.base_mels_path,
                     os.path.splitext(os.path.split(filename)[-1])[0] + ".npy",
                 )
-            )
+            ).astype(np.float32)
             mel = torch.from_numpy(mel)
 
             if len(mel.shape) < 3:
@@ -312,7 +313,6 @@ class HiFiGanDataset:
             self.win_size,
             self.fmin,
             self.fmax_loss,
-            center=False,
         )
 
         return (mel.squeeze(), audio.squeeze(0), filename, mel_loss.squeeze())

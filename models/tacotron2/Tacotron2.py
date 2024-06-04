@@ -155,3 +155,39 @@ class Tacotron2(torch.nn.Module):
             [mel_outputs, mel_outputs_postnet, gate_outputs, alignments]
         )
         return outputs
+
+    def teacher_inference(self, inputs, mels):
+            """
+        Performs teacher-forced inference with the Tacotron2 model.
+
+        This method generates mel-spectrograms using both input text sequences 
+        and corresponding ground truth mel-spectrograms. It prepares the input 
+        sequences, encodes them, and processes the mel-spectrograms through the 
+        decoder and postnet with teacher forcing.
+
+        Args:
+            inputs (torch.Tensor): Input text sequences.
+            mels (torch.Tensor): Ground truth mel-spectrograms.
+
+        Returns:
+            list of torch.Tensor: The processed outputs including:
+                - mel_outputs (torch.Tensor): Predicted mel spectrograms.
+                - mel_outputs_postnet (torch.Tensor): Refined mel spectrograms after postnet.
+                - gate_outputs (torch.Tensor): Predicted gate values.
+                - alignments (torch.Tensor): Attention alignments.
+        """
+        text_lengths, _ =  torch.sort(torch.LongTensor([len(x) for x in inputs]).to('cuda'),
+                            dim = 0, descending = True)
+
+        embedded_inputs = self.embedding(inputs).transpose(1, 2)
+        encoder_outputs = self.encoder(embedded_inputs, text_lengths)
+
+        mel_outputs, gate_outputs, alignments = self.decoder(
+            encoder_outputs, mels, memory_lengths=text_lengths)
+        
+        mel_outputs_postnet = self.postnet(mel_outputs)
+        mel_outputs_postnet = mel_outputs + mel_outputs_postnet
+        
+        outputs =  self.parse_output(
+            [mel_outputs, mel_outputs_postnet, gate_outputs, alignments])
+        return outputs

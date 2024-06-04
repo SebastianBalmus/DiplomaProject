@@ -154,7 +154,7 @@ class HiFiGanTrainer:
         self.mpd.load_state_dict(ckpt_dict_discriminator["mpd"])
         self.msd.load_state_dict(ckpt_dict_discriminator["msd"])
 
-        self.optim_g.load_state_dict(ckpt_dict_generator["optim_g"])
+        self.optim_g.load_state_dict(ckpt_dict_discriminator["optim_g"])
         self.optim_d.load_state_dict(ckpt_dict_discriminator["optim_d"])
 
         self.steps = ckpt_dict_discriminator["steps"] + 1
@@ -177,7 +177,6 @@ class HiFiGanTrainer:
                     if self.hparams.num_gpus > 1
                     else self.generator
                 ).state_dict(),
-                "optim_g": self.optim_g.state_dict(),
             },
             ckpt_path_generator,
         )
@@ -190,6 +189,7 @@ class HiFiGanTrainer:
                     self.msd.module if self.hparams.num_gpus > 1 else self.msd
                 ).state_dict(),
                 "optim_d": self.optim_d.state_dict(),
+                "optim_g": self.optim_g.state_dict(),
                 "steps": self.steps,
                 "epoch": epoch,
             },

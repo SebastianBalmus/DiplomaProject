@@ -5,7 +5,7 @@ from text import text_to_sequence
 from models.tacotron2.Tacotron2 import Tacotron2
 from hparams.Tacotron2HParams import Tacotron2HParams as hps
 from utils.util import to_arr
-from utils.audio import inv_melspectrogram
+from utils.audio import melspectrogram, load_wav, inv_melspectrogram
 
 
 torch.backends.cudnn.enabled = True
@@ -80,6 +80,47 @@ class Tacotron2InferenceHandler:
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
         mel_outputs, mel_outputs_postnet, _, alignments = self.tacotron2.inference(sequence)
         return to_arr(mel_outputs_postnet)
+
+    def teacher_inference(self, wav_path, text):
+        """
+        Perform teacher-forced inference using Tacotron2.
+
+        This method generates mel-spectrograms from the input text and a reference
+        waveform using teacher forcing. It prepares the input text and mel-spectrogram 
+        sequences, performs the Tacotron2 inference, and processes the output to handle
+        sequence lengths.
+
+        Args:
+            wav_path (str): Path to the reference waveform file.
+            text (str): The input text to be converted to speech.
+
+        Returns:
+            np.ndarray: The generated mel-spectrogram postnet output.
+        """
+        sequence = text_to_sequence(text, hps.text_cleaners)
+        sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
+
+        mel = melspectrogram(load_wav(wav_path))
+        mel_in = torch.Tensor([mel]).to(self.device)
+
+        r = mel_in.shape[2]%hps.n_frames_per_step
+
+        if r != 0:
+            mel_in = mel_in[:, :, :-r]
+
+        sequence = torch.cat([sequence, sequence], 0)
+        mel_in = torch.cat([mel_in, mel_in], 0)
+
+        _, mel_outputs_postnet, _, _ = self.tacotron2.teacher_inference(sequence, mel_in)
+
+        ret = mel
+
+        if r != 0:
+            ret[:, :-r] = to_arr(mel_outputs_postnet[0])
+        else:
+            ret = to_arr(mel_outputs_postnet[0])
+        return ret
+
 
     @staticmethod
     def static_infer(text, model, device):
