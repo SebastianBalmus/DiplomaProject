@@ -11,7 +11,8 @@ class Tacotron2HParams:
     world_size = 1
 
     # Data Parameters
-    text_cleaners = ["english_cleaners"]
+    # text_cleaners = ["english_cleaners"]
+    text_cleaners = ["transliteration_cleaners"]
 
     # Audio
     num_mels = 80
@@ -34,13 +35,16 @@ class Tacotron2HParams:
     eps = 1e-6
     sch_step = 4000
     max_iter = 200000
-    batch_size = 64
+    batch_size = 32
     iters_per_log = 10
     iters_per_sample = 500
     iters_per_ckpt = 10000
     weight_decay = 1e-6
     grad_clip_thresh = 1.0
-    eg_text = "OMAK is a thinking process which considers things always positively."
+
+    # English and Romanian example text
+    # eg_text = "OMAK is a thinking process which considers things always positively."
+    eg_text = "Astfel, lucrarea mea de licență este finalizată."
 
     # Model Parameters
     n_symbols = len(symbols)
