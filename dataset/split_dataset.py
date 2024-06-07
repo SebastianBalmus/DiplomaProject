@@ -4,12 +4,12 @@ import random
 import argparse
 
 
-def split_ljspeech(metadata_path, save_dir, validation_size=0.05, seed=88):
+def split_dataset(metadata_path, save_dir, validation_size=0.05, seed=88):
     """
-    Splits the LJ Speech dataset metadata into train and validation sets.
+    Splits the dataset metadata into train and validation sets.
 
     Args:
-        metadata_path (str): Path to the metadata CSV file containing LJ Speech dataset information.
+        metadata_path (str): Path to the metadata CSV file containing dataset information.
         save_dir (str): Directory where the split dataset will be saved.
         validation_size (float, optional): Fraction of the dataset to include in the validation set. Defaults to 0.1.
         seed (int, optional): Seed for random shuffling of the dataset. Defaults to 88.
@@ -72,4 +72,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    split_ljspeech(args.metadata_path, args.save_dir)
+    split_dataset(args.metadata_path, args.save_dir)
