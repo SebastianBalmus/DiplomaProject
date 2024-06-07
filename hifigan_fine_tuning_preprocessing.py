@@ -41,7 +41,7 @@ def process_data(args):
         os.chmod(args.save_dir, 0o775)
 
     tacotron2 = Tacotron2InferenceHandler(
-        "/train_path/working_models/tacotron2_initial_training_modified", use_cuda=True
+        args.ckpt_path, use_cuda=True
     )
 
     for sentence in data:
@@ -70,6 +70,13 @@ if __name__ == "__main__":
         "--save_dir",
         type=str,
         help="Where to save the mels",
+    )
+
+    parser.add_argument(
+        "-cp",
+        "--ckpt_path",
+        type=str,
+        help="Path to Tacotron2 checkpoint used for inference"
     )
 
     parser.add_argument(
