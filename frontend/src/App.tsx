@@ -19,7 +19,7 @@ const onFormSubmit = async (values: {text: string, model: string}) => {
       },
       headers: {
         Accept: 'audio/wav',
-        'Content-Type': 'audio/wav',
+        'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
       }
     },
