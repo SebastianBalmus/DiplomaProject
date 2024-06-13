@@ -2,14 +2,18 @@ import os
 import tempfile
 import numpy as np
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from fastapi.responses import FileResponse
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from scipy.io import wavfile
 from .model_selections import select_model
 
 
 
-app = FastAPI()
+app = FastAPI(middleware=[
+    Middleware(CORSMiddleware, allow_origins=["*"])
+])
 
 
 class TextBody(BaseModel):
@@ -29,7 +33,6 @@ def infer(model_id: str, use_cuda: bool, body: TextBody):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:
             wavfile.write(tmpfile.name, sr, wav.astype(np.int16))
             return FileResponse(tmpfile.name, media_type="audio/wav", filename="output.wav")
-            os.remove(tmpfile.name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

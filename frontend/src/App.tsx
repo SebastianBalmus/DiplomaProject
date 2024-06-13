@@ -1,24 +1,45 @@
-import { useState } from 'react'
+import axios from 'axios';
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline';
+import AppBar from './components/AppBar';
+import TTSForm from './components/TTSForm';
+import Footer from './components/Footer';
+import darkTheme from './theme'
+
+const onFormSubmit = async (values: {text: string, model: string}) => {
+  const { data } = await axios.post(
+    'http://46.243.115.3:8080/infer',
+    {
+      text: values.text,
+    },
+    {
+      params: {
+        model: values.model,
+        use_cuda: true,
+      },
+      headers: {
+        Accept: 'audio/wav',
+        'Content-Type': 'audio/wav',
+        'Access-Control-Allow-Origin': '*',
+      }
+    },
+  );
+
+  console.log(data)
+  return data
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+
 
   return (
-    <>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <AppBar />
+      <TTSForm onSubmit={onFormSubmit} />
+      <Footer />
+    </ThemeProvider>
   )
 }
 
-export default App
+export default App;
