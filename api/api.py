@@ -14,8 +14,9 @@ from .model_selections import select_model
 app = FastAPI(middleware=[
     Middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"]
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 ])
 
