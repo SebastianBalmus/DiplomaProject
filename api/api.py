@@ -20,6 +20,7 @@ from hparams.HiFiGanHParams import HiFiGanHParams as hps
 from dataset.HiFiGanDataset import HiFiGanDataset
 
 plt.style.use('dark_background')
+plt.rcParams.update({'font.size': 22})
 
 app = FastAPI(middleware=[
     Middleware(
@@ -80,14 +81,14 @@ async def mel(wav_file: UploadFile = File(...)):
         fmax=hps.fmax_for_loss,
     )
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(11, 7))
     plt.imshow(mel_spec[0], aspect="auto", origin="lower", interpolation="none")
     plt.title('Mel Spectrogram')
     plt.xlabel('Time (s)')
     plt.ylabel('Amplitude')
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', transparent=True)
     buf.seek(0)
     plt.close()
 
