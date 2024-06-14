@@ -42,3 +42,7 @@ def infer(model_id: str, use_cuda: bool, body: TextBody):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/mel")
+def mel():
+    pass

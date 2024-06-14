@@ -121,6 +121,7 @@ const darkTheme = createTheme({
       action: {
         selected: alpha(brand[800], 0.2),
       },
+      // @ts-ignore
       typography: {
         fontFamily: ['"Inter", "sans-serif"'].join(','),
         h1: {

@@ -36,11 +36,12 @@ function TTSForm (props: TTSFormProps) {
       validationSchema
     });
     return (
-        <form onSubmit={formik.handleSubmit}>
+      <form onSubmit={formik.handleSubmit}>
       <Box
         sx={{
           display: 'flex',
           flexDirection: 'column',
+          justifyContent: 'center',
           alignItems: 'center',
           width: '100vw',
           height: '100vh',
@@ -62,7 +63,7 @@ function TTSForm (props: TTSFormProps) {
               id="text"
               label="Text to synthesize"
               multiline
-              rows={4}
+              rows={8}
               value={formik.values.text}
               onChange={formik.handleChange}
               error={formik.touched.text && Boolean(formik.errors.text)}
