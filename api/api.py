@@ -1,15 +1,25 @@
+import sys
+sys.path.append('..')
+
+import io
 import os
+import torch
 import tempfile
+import librosa
 import numpy as np
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+import librosa.display
+from matplotlib import pyplot as plt
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse, StreamingResponse
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from scipy.io import wavfile
 from .model_selections import select_model
+from hparams.HiFiGanHParams import HiFiGanHParams as hps
+from dataset.HiFiGanDataset import HiFiGanDataset
 
-
+plt.style.use('dark_background')
 
 app = FastAPI(middleware=[
     Middleware(
@@ -44,5 +54,41 @@ def infer(model_id: str, use_cuda: bool, body: TextBody):
 
 
 @app.post("/mel")
-def mel():
-    pass
+async def mel(wav_file: UploadFile = File(...)):
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+
+    try:
+        # Write the uploaded file contents to the temporary file
+        temp_file.write(await wav_file.read())
+        temp_file.close()
+
+        # Load the audio data using librosa from the temporary file
+        wav, sr = librosa.load(temp_file.name, sr=None)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error loading WAV file: {str(e)}")
+    finally:
+        os.remove(temp_file.name)  # Clean up the temporary file
+
+    mel_spec = HiFiGanDataset.mel_spectrogram(
+        torch.FloatTensor(wav).unsqueeze(0),
+        n_fft=hps.n_fft,
+        num_mels=hps.num_mels,
+        sampling_rate=hps.sampling_rate,
+        hop_size=hps.hop_size,
+        win_size=hps.win_size,
+        fmin=hps.fmin,
+        fmax=hps.fmax_for_loss,
+    )
+
+    plt.figure(figsize=(10, 6))
+    plt.imshow(mel_spec[0], aspect="auto", origin="lower", interpolation="none")
+    plt.title('Mel Spectrogram')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude')
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    plt.close()
+
+    return StreamingResponse(buf, media_type="image/png")
