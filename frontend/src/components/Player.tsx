@@ -7,7 +7,7 @@ import darkTheme from '../theme'
 import './Player.css'
 
 
-function Player(props: {src: string, resetAction: () => void}) {
+function Player(props: {wav_src: string, mel_src: string, resetAction: () => void}) {
   const isDesktop = useMediaQuery(darkTheme.breakpoints.up('md'));
 
   return (
@@ -32,8 +32,14 @@ function Player(props: {src: string, resetAction: () => void}) {
         gap: '20px'
       }}
     >
+      <img
+        src={props.mel_src}
+        style={{
+          maxWidth: '100%',
+        }}
+      />
       <AudioPlayer
-        src={props.src}
+        src={props.wav_src}
         customAdditionalControls={[]}
         showJumpControls={false}
       />
