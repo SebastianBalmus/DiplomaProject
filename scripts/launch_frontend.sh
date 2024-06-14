@@ -8,7 +8,6 @@ else
 fi
 
 cd frontend
-npm run build
 
 $DOCKER_COMMAND rm sebastian_frontend
 $DOCKER_COMMAND rmi sebastian_nginx
