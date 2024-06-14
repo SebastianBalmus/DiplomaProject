@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Check the OS
 if [[ "$OSTYPE" == "msys" || "$MSYSTEM" == "MINGW32" || "$MSYSTEM" == "MINGW64" ]]; then
     # Windows with MinGW (Git Bash)
@@ -9,14 +11,21 @@ fi
 
 cd frontend
 
-$DOCKER_COMMAND rm sebastian_frontend
-$DOCKER_COMMAND rmi sebastian_nginx
+# Remove the container if it exists
+$DOCKER_COMMAND rm -f sebastian_frontend || true
+
+# Remove the image if it exists
+$DOCKER_COMMAND rmi -f sebastian_nginx || true
+
+# Pull the base Nginx image
 $DOCKER_COMMAND pull nginx:alpine
+
+# Build the Docker image
 $DOCKER_COMMAND build -t sebastian_nginx .
 
-# run Nginx
+# Run the container
 $DOCKER_COMMAND run \
     --name sebastian_frontend \
     -p 80:80 \
-    -it \
+    -d \
     sebastian_nginx
