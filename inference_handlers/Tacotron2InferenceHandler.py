@@ -28,23 +28,23 @@ class Tacotron2InferenceHandler:
         tacotron2 (Tacotron2): Tacotron2 model instance.
     """
 
-    def __init__(self, ckpt_pth, use_cuda):
+    def __init__(self, ckpt_pth, use_cuda, use_ro=False):
         if torch.cuda.is_available() and use_cuda is True:
             torch.cuda.manual_seed(hps.seed)
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
 
-        self._load_model(ckpt_pth)
+        self._load_model(ckpt_pth, use_ro)
 
-    def _load_model(self, ckpt_pth):
+    def _load_model(self, ckpt_pth, use_ro):
         """
         Load Tacotron2 model from checkpoint.
         """
         assert os.path.isfile(ckpt_pth)
         logger.info(f"Loading checkpoint: {ckpt_pth}")
         ckpt_dict = torch.load(ckpt_pth, map_location=self.device)
-        self.tacotron2 = Tacotron2()
+        self.tacotron2 = Tacotron2(use_ro)
         self.tacotron2.load_state_dict(ckpt_dict["Tacotron2"])
         self.tacotron2 = self.tacotron2.to(self.device)
         self.tacotron2.eval()

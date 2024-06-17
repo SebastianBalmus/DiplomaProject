@@ -39,7 +39,7 @@ class TextBody(BaseModel):
 
 @app.post("/infer")
 def infer(model_id: str, use_cuda: bool, body: TextBody):
-
+    print(model_id)
     tacotron2, hifigan, cleaners = select_model(model_id, use_cuda)
 
     try:
