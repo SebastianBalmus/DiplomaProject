@@ -19,10 +19,15 @@ class Tacotron2(torch.nn.Module):
         postnet (Postnet): Postnet component of the Tacotron2 model.
     """
 
-    def __init__(self):
+    def __init__(self, use_ro=False):
         super(Tacotron2, self).__init__()
-        self.embedding = torch.nn.Embedding(hps.n_symbols, hps.symbols_embedding_dim)
-        std = sqrt(2.0 / (hps.n_symbols + hps.symbols_embedding_dim))
+        if use_ro:
+            n_symbols = hps.n_symbols_ro
+        else:
+            n_symbols = hps.n_symbols
+
+        self.embedding = torch.nn.Embedding(n_symbols, hps.symbols_embedding_dim)
+        std = sqrt(2.0 / (n_symbols + hps.symbols_embedding_dim))
         val = sqrt(3.0) * std
         self.embedding.weight.data.uniform_(-val, val)
         self.encoder = Encoder()

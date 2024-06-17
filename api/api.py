@@ -39,12 +39,12 @@ class TextBody(BaseModel):
 
 @app.post("/infer")
 def infer(model_id: str, use_cuda: bool, body: TextBody):
-
-    tacotron2, hifigan = select_model(model_id, use_cuda)
+    print(model_id)
+    tacotron2, hifigan, cleaners = select_model(model_id, use_cuda)
 
     try:
 
-        mel = tacotron2.infer_e2e(body.text)
+        mel = tacotron2.infer_e2e(body.text, cleaners)
         wav, sr = hifigan.infer(mel)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:

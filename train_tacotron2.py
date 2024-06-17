@@ -60,7 +60,7 @@ class Tacotron2Trainer:
 
         self.device = torch.device("cuda", self.rank)
 
-        self.Tacotron2 = Tacotron2().to(self.device)
+        self.Tacotron2 = Tacotron2(self.input_args.use_ro).to(self.device)
 
         self._log_to_console(self.Tacotron2)
         self._log_to_console(f"Checkpoints directory: {self.input_args.ckpt_dir}")
@@ -335,6 +335,11 @@ if __name__ == "__main__":
         type=str,
         default="",
         help="Directory where tensorboard logs are saved",
+    )
+    parser.add_argument(
+        '--use_ro',
+        action='store_true',
+        help='Use Romanian symbols. Default is False.'
     )
 
     args = parser.parse_args()

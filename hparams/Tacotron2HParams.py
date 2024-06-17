@@ -1,4 +1,4 @@
-from text import symbols
+from text import symbols, symbols_ro
 
 
 class Tacotron2HParams:
@@ -12,7 +12,7 @@ class Tacotron2HParams:
 
     # Data Parameters
     # text_cleaners = ["english_cleaners"]
-    text_cleaners = ["transliteration_cleaners"]
+    text_cleaners = ["basic_cleaners"]
 
     # Audio
     num_mels = 80
@@ -48,6 +48,7 @@ class Tacotron2HParams:
 
     # Model Parameters
     n_symbols = len(symbols)
+    n_symbols_ro = len(symbols_ro)
     symbols_embedding_dim = 512
 
     # Encoder parameters
