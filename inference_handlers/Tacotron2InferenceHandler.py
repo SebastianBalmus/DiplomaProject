@@ -66,7 +66,7 @@ class Tacotron2InferenceHandler:
         )
         return (mel_outputs, mel_outputs_postnet, alignments)
 
-    def infer_e2e(self, text):
+    def infer_e2e(self, text, cleaners):
         """
         Function used for end to end inference
 
@@ -78,7 +78,7 @@ class Tacotron2InferenceHandler:
         Returns:
             tuple: Tuple containing mel spectrogram outputs, postnet mel spectrogram outputs, and alignments.
         """
-        sequence = text_to_sequence(text, hps.text_cleaners)
+        sequence = text_to_sequence(text)
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
         _, mel_outputs_postnet, _, _ = self.tacotron2.inference(
             sequence
