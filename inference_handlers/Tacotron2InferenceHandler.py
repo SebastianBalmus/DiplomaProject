@@ -78,7 +78,7 @@ class Tacotron2InferenceHandler:
         Returns:
             tuple: Tuple containing mel spectrogram outputs, postnet mel spectrogram outputs, and alignments.
         """
-        sequence = text_to_sequence(text)
+        sequence = text_to_sequence(text, cleaners)
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
         _, mel_outputs_postnet, _, _ = self.tacotron2.inference(
             sequence
