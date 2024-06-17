@@ -12,7 +12,7 @@ class Tacotron2HParams:
 
     # Data Parameters
     # text_cleaners = ["english_cleaners"]
-    text_cleaners = ["transliteration_cleaners"]
+    text_cleaners = ["basic_cleaners"]
 
     # Audio
     num_mels = 80
