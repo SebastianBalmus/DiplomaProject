@@ -80,10 +80,10 @@ class Tacotron2InferenceHandler:
         """
         sequence = text_to_sequence(text, cleaners)
         sequence = torch.IntTensor(sequence)[None, :].long().to(self.device)
-        _, mel_outputs_postnet, _, _ = self.tacotron2.inference(
+        _, mel_outputs_postnet, _, alignments = self.tacotron2.inference(
             sequence
         )
-        return to_arr(mel_outputs_postnet)
+        return to_arr(mel_outputs_postnet), to_arr(alignments)
 
     def teacher_inference(self, wav_path, text):
         """

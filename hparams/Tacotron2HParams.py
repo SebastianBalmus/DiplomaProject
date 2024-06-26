@@ -1,4 +1,4 @@
-from text import symbols, symbols_ro
+from text import symbols
 
 
 class Tacotron2HParams:
@@ -11,9 +11,10 @@ class Tacotron2HParams:
     world_size = 1
 
     # Data Parameters
-    # text_cleaners = ["english_cleaners"]
-    text_cleaners = ["basic_cleaners"]
-
+    # text_cleaners = ["english_cleaners"] # English
+    # text_cleaners = ["transliteration_cleaners"] # Romanian without diacritics
+    text_cleaners = ["basic_cleaners"] # Romanian
+    
     # Audio
     num_mels = 80
     num_freq = 513
@@ -48,7 +49,6 @@ class Tacotron2HParams:
 
     # Model Parameters
     n_symbols = len(symbols)
-    n_symbols_ro = len(symbols_ro)
     symbols_embedding_dim = 512
 
     # Encoder parameters

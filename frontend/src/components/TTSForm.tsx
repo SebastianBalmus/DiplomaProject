@@ -90,12 +90,11 @@ function TTSForm (props: TTSFormProps) {
                 onChange={formik.handleChange}
                 error={formik.touched.model && Boolean(formik.errors.model)}
               >
-                  <MenuItem value={'tts_en'}>English</MenuItem>
-                  <MenuItem value={'tts_en_ft'}>English (fine-tuned vocoder)</MenuItem>
-                  <MenuItem value={'tts_ro'}>Romanian (diacritics insensitive)</MenuItem>
-                  <MenuItem value={'tts_ro_ft'}>Romanian (diacritics insensitive + fine-tuned vocoder)</MenuItem>
+                  <MenuItem value={'tts_en'}>English (high-fidelity)</MenuItem>
+                  <MenuItem value={'tts_ro_d_ft'}>Romanian (high-fidelity)</MenuItem>
+                  <MenuItem value={'tts_ro_ft'}>Romanian - diacritics insensitive (high-fidelity)</MenuItem>
                   <MenuItem value={'tts_ro_d'}>Romanian</MenuItem>
-                  <MenuItem value={'tts_ro_d_ft'}>Romanian (fine-tuned vocoder)</MenuItem>
+                  <MenuItem value={'tts_ro'}>Romanian - diacritics insensitive</MenuItem>
                 </Select>
                 {(formik.touched.model && formik.errors.model) && (
                   <FormHelperText error>
