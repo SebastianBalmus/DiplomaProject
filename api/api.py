@@ -44,7 +44,7 @@ def infer(model_id: str, use_cuda: bool, body: TextBody):
 
     try:
 
-        mel = tacotron2.infer_e2e(body.text, cleaners)
+        mel, _ = tacotron2.infer_e2e(body.text, cleaners)
         wav, sr = hifigan.infer(mel)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:

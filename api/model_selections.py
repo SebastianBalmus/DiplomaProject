@@ -35,12 +35,6 @@ def select_model(model_id, use_cuda):
         cleaners = ["basic_cleaners"]
         use_ro = True
 
-    elif model_id == "tts_en_ft":
-        tacotron2_ckpt = _CHECKPOINTS_PATHS['tacotron2_en']
-        hifigan_ckpt = _CHECKPOINTS_PATHS['hifigan_ft_en']
-        cleaners = ["english_cleaners"]
-        use_ro = False
-
     elif model_id == "tts_ro_ft":
         tacotron2_ckpt = _CHECKPOINTS_PATHS['tacotron2_ro']
         hifigan_ckpt = _CHECKPOINTS_PATHS['hifigan_ft_ro']

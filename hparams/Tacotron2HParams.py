@@ -1,6 +1,5 @@
 from text import symbols, symbols_ro
 
-
 class Tacotron2HParams:
     seed = 88
 
@@ -11,9 +10,10 @@ class Tacotron2HParams:
     world_size = 1
 
     # Data Parameters
-    # text_cleaners = ["english_cleaners"]
-    text_cleaners = ["basic_cleaners"]
-
+    # text_cleaners = ["english_cleaners"] # English
+    # text_cleaners = ["transliteration_cleaners"] # Romanian without diacritics
+    text_cleaners = ["basic_cleaners"] # Romanian
+    
     # Audio
     num_mels = 80
     num_freq = 513
