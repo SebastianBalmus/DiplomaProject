@@ -8,7 +8,9 @@ WORKDIR /app
 COPY . .
 
 # Install ALL requirements
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+RUN pip install --user llvmlite==0.36.0
 
 # Expose needed ports
 EXPOSE 8888
